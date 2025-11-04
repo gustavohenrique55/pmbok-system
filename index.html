@@ -3,32 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Gestão de Projetos - PMBOK 7ª Edição</title>
+    <title>PMBOK 7 Manager Pro - Sistema Completo de Gestão de Projetos</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+        .notification-enter {
+            animation: slideIn 0.3s ease-out;
         }
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 4px;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #555;
+        @media print {
+            .no-print { display: none !important; }
         }
     </style>
 </head>
@@ -38,15 +43,23 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        const PMBOKProjectManager = () => {
+        const PMBOKManagerPro = () => {
             // Estados principais
+            const [currentUser, setCurrentUser] = useState(null);
+            const [users, setUsers] = useState([]);
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [showLogin, setShowLogin] = useState(true);
+            const [notifications, setNotifications] = useState([]);
+            const [darkMode, setDarkMode] = useState(false);
             const [activeView, setActiveView] = useState('dashboard');
             const [projects, setProjects] = useState([]);
             const [activeProject, setActiveProject] = useState(null);
             const [showModal, setShowModal] = useState(null);
             const [editingItem, setEditingItem] = useState(null);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [language, setLanguage] = useState('pt');
 
-            // Estados para diferentes artefatos do PMBOK
+            // Estados para artefatos PMBOK
             const [projectCharters, setProjectCharters] = useState([]);
             const [stakeholders, setStakeholders] = useState([]);
             const [risks, setRisks] = useState([]);
@@ -57,28 +70,111 @@
             const [qualityMetrics, setQualityMetrics] = useState([]);
             const [communications, setCommunications] = useState([]);
             const [resources, setResources] = useState([]);
+            const [tasks, setTasks] = useState([]);
+
+            // Traduções
+            const translations = {
+                pt: {
+                    welcome: "Bem-vindo",
+                    dashboard: "Dashboard",
+                    projects: "Projetos",
+                    logout: "Sair",
+                    exportPdf: "Exportar PDF",
+                    notifications: "Notificações",
+                    settings: "Configurações",
+                    newProject: "Novo Projeto",
+                    projectName: "Nome do Projeto",
+                    description: "Descrição",
+                    startDate: "Data Início",
+                    endDate: "Data Fim",
+                    budget: "Orçamento",
+                    save: "Salvar",
+                    cancel: "Cancelar",
+                    delete: "Deletar",
+                    edit: "Editar",
+                    status: "Status",
+                    active: "Ativo",
+                    completed: "Concluído",
+                    onHold: "Pausado",
+                    planning: "Planejamento"
+                },
+                en: {
+                    welcome: "Welcome",
+                    dashboard: "Dashboard",
+                    projects: "Projects",
+                    logout: "Logout",
+                    exportPdf: "Export PDF",
+                    notifications: "Notifications",
+                    settings: "Settings",
+                    newProject: "New Project",
+                    projectName: "Project Name",
+                    description: "Description",
+                    startDate: "Start Date",
+                    endDate: "End Date",
+                    budget: "Budget",
+                    save: "Save",
+                    cancel: "Cancel",
+                    delete: "Delete",
+                    edit: "Edit",
+                    status: "Status",
+                    active: "Active",
+                    completed: "Completed",
+                    onHold: "On Hold",
+                    planning: "Planning"
+                }
+            };
+
+            const t = (key) => translations[language][key] || key;
 
             // Carregar dados do localStorage
             useEffect(() => {
-                const loadData = (key, setter) => {
-                    const data = localStorage.getItem(key);
-                    if (data) setter(JSON.parse(data));
+                const loadData = () => {
+                    try {
+                        const savedUsers = localStorage.getItem('pmbok_users');
+                        if (savedUsers) setUsers(JSON.parse(savedUsers));
+                        
+                        const savedProjects = localStorage.getItem('pmbok_projects');
+                        if (savedProjects) setProjects(JSON.parse(savedProjects));
+                        
+                        const savedCharters = localStorage.getItem('pmbok_charters');
+                        if (savedCharters) setProjectCharters(JSON.parse(savedCharters));
+                        
+                        const savedStakeholders = localStorage.getItem('pmbok_stakeholders');
+                        if (savedStakeholders) setStakeholders(JSON.parse(savedStakeholders));
+                        
+                        const savedRisks = localStorage.getItem('pmbok_risks');
+                        if (savedRisks) setRisks(JSON.parse(savedRisks));
+                        
+                        const savedDarkMode = localStorage.getItem('pmbok_darkMode');
+                        if (savedDarkMode) setDarkMode(JSON.parse(savedDarkMode));
+                        
+                        const savedLanguage = localStorage.getItem('pmbok_language');
+                        if (savedLanguage) setLanguage(savedLanguage);
+                        
+                        const savedTasks = localStorage.getItem('pmbok_tasks');
+                        if (savedTasks) setTasks(JSON.parse(savedTasks));
+                        
+                        // Check for logged in user
+                        const loggedUser = localStorage.getItem('pmbok_currentUser');
+                        if (loggedUser) {
+                            setCurrentUser(JSON.parse(loggedUser));
+                            setIsLoggedIn(true);
+                            setShowLogin(false);
+                        }
+                    } catch (error) {
+                        console.error('Error loading data:', error);
+                    }
                 };
-                
-                loadData('pmbok_projects', setProjects);
-                loadData('pmbok_charters', setProjectCharters);
-                loadData('pmbok_stakeholders', setStakeholders);
-                loadData('pmbok_risks', setRisks);
-                loadData('pmbok_wbs', setWbs);
-                loadData('pmbok_changes', setChanges);
-                loadData('pmbok_lessons', setLessons);
-                loadData('pmbok_deliverables', setDeliverables);
-                loadData('pmbok_quality', setQualityMetrics);
-                loadData('pmbok_communications', setCommunications);
-                loadData('pmbok_resources', setResources);
+                loadData();
             }, []);
 
             // Salvar dados no localStorage
+            useEffect(() => {
+                if (users.length > 0) {
+                    localStorage.setItem('pmbok_users', JSON.stringify(users));
+                }
+            }, [users]);
+
             useEffect(() => {
                 localStorage.setItem('pmbok_projects', JSON.stringify(projects));
             }, [projects]);
@@ -96,1334 +192,572 @@
             }, [risks]);
 
             useEffect(() => {
-                localStorage.setItem('pmbok_wbs', JSON.stringify(wbs));
-            }, [wbs]);
+                localStorage.setItem('pmbok_tasks', JSON.stringify(tasks));
+            }, [tasks]);
 
             useEffect(() => {
-                localStorage.setItem('pmbok_changes', JSON.stringify(changes));
-            }, [changes]);
+                localStorage.setItem('pmbok_darkMode', JSON.stringify(darkMode));
+            }, [darkMode]);
 
             useEffect(() => {
-                localStorage.setItem('pmbok_lessons', JSON.stringify(lessons));
-            }, [lessons]);
+                localStorage.setItem('pmbok_language', language);
+            }, [language]);
 
-            useEffect(() => {
-                localStorage.setItem('pmbok_deliverables', JSON.stringify(deliverables));
-            }, [deliverables]);
-
-            useEffect(() => {
-                localStorage.setItem('pmbok_quality', JSON.stringify(qualityMetrics));
-            }, [qualityMetrics]);
-
-            useEffect(() => {
-                localStorage.setItem('pmbok_communications', JSON.stringify(communications));
-            }, [communications]);
-
-            useEffect(() => {
-                localStorage.setItem('pmbok_resources', JSON.stringify(resources));
-            }, [resources]);
-
-            // Os 12 Princípios do PMBOK 7
-            const pmbokPrinciples = [
-                { id: 1, name: "Administração", icon: "shield", description: "Ser um administrador diligente, respeitoso e atencioso" },
-                { id: 2, name: "Colaboração", icon: "users", description: "Criar um ambiente colaborativo da equipe do projeto" },
-                { id: 3, name: "Stakeholders", icon: "user-check", description: "Engajar-se efetivamente com as partes interessadas" },
-                { id: 4, name: "Valor", icon: "target", description: "Focar no valor" },
-                { id: 5, name: "Pensamento Sistêmico", icon: "git-branch", description: "Reconhecer e responder às interações do sistema" },
-                { id: 6, name: "Liderança", icon: "award", description: "Demonstrar comportamentos de liderança" },
-                { id: 7, name: "Adaptação", icon: "refresh-cw", description: "Adaptar com base no contexto" },
-                { id: 8, name: "Qualidade", icon: "check-circle", description: "Incorporar qualidade nos processos e entregas" },
-                { id: 9, name: "Complexidade", icon: "layers", description: "Navegar na complexidade" },
-                { id: 10, name: "Riscos", icon: "alert-triangle", description: "Otimizar respostas aos riscos" },
-                { id: 11, name: "Resiliência", icon: "activity", description: "Abraçar adaptabilidade e resiliência" },
-                { id: 12, name: "Mudança", icon: "trending-up", description: "Permitir mudanças para alcançar o estado futuro" }
-            ];
-
-            // Os 8 Domínios de Desempenho do PMBOK 7
-            const performanceDomains = [
-                { id: 'stakeholders', name: 'Partes Interessadas', icon: 'users', color: 'bg-blue-500' },
-                { id: 'team', name: 'Equipe', icon: 'user-plus', color: 'bg-green-500' },
-                { id: 'development', name: 'Desenvolvimento e Ciclo de Vida', icon: 'git-branch', color: 'bg-purple-500' },
-                { id: 'planning', name: 'Planejamento', icon: 'calendar', color: 'bg-indigo-500' },
-                { id: 'project-work', name: 'Trabalho do Projeto', icon: 'briefcase', color: 'bg-yellow-500' },
-                { id: 'delivery', name: 'Entrega', icon: 'package', color: 'bg-red-500' },
-                { id: 'measurement', name: 'Medição', icon: 'bar-chart-2', color: 'bg-pink-500' },
-                { id: 'uncertainty', name: 'Incerteza', icon: 'alert-triangle', color: 'bg-orange-500' }
-            ];
-
-            // Menu lateral de navegação
-            const menuItems = [
-                { id: 'dashboard', name: 'Dashboard', icon: 'layout-dashboard' },
-                { id: 'charter', name: 'Project Charter', icon: 'file-text' },
-                { id: 'stakeholders', name: 'Stakeholders', icon: 'users' },
-                { id: 'wbs', name: 'EAP/WBS', icon: 'git-branch' },
-                { id: 'schedule', name: 'Cronograma', icon: 'calendar' },
-                { id: 'resources', name: 'Recursos', icon: 'user-plus' },
-                { id: 'risks', name: 'Riscos', icon: 'alert-triangle' },
-                { id: 'quality', name: 'Qualidade', icon: 'check-circle' },
-                { id: 'communications', name: 'Comunicações', icon: 'message-circle' },
-                { id: 'changes', name: 'Mudanças', icon: 'refresh-cw' },
-                { id: 'deliverables', name: 'Entregas', icon: 'package' },
-                { id: 'metrics', name: 'Métricas/EVA', icon: 'bar-chart-2' },
-                { id: 'lessons', name: 'Lições Aprendidas', icon: 'book-open' }
-            ];
-
-            // Componente Dashboard
-            const Dashboard = () => {
-                const canvasRefs = {
-                    eva: useRef(null),
-                    risks: useRef(null),
-                    performance: useRef(null)
+            // Sistema de Notificações
+            const addNotification = (type, title, message) => {
+                const notification = {
+                    id: Date.now(),
+                    type,
+                    title,
+                    message,
+                    timestamp: new Date().toISOString()
                 };
+                setNotifications(prev => [...prev, notification]);
+                
+                // Auto remove após 5 segundos
+                setTimeout(() => {
+                    removeNotification(notification.id);
+                }, 5000);
+            };
 
-                const chartInstances = useRef({});
+            const removeNotification = (id) => {
+                setNotifications(prev => prev.filter(n => n.id !== id));
+            };
 
-                useEffect(() => {
-                    // Destruir gráficos anteriores
-                    Object.values(chartInstances.current).forEach(chart => {
-                        if (chart) chart.destroy();
-                    });
-
-                    if (activeProject) {
-                        // Gráfico EVA (Earned Value Analysis)
-                        if (canvasRefs.eva.current) {
-                            const ctx = canvasRefs.eva.current.getContext('2d');
-                            chartInstances.current.eva = new Chart(ctx, {
-                                type: 'line',
-                                data: {
-                                    labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
-                                    datasets: [
-                                        {
-                                            label: 'Valor Planejado (PV)',
-                                            data: [10000, 20000, 35000, 50000, 65000, 80000],
-                                            borderColor: 'rgb(59, 130, 246)',
-                                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                                            tension: 0.1
-                                        },
-                                        {
-                                            label: 'Valor Agregado (EV)',
-                                            data: [8000, 18000, 30000, 42000, 55000, 68000],
-                                            borderColor: 'rgb(34, 197, 94)',
-                                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                                            tension: 0.1
-                                        },
-                                        {
-                                            label: 'Custo Real (AC)',
-                                            data: [9000, 19000, 32000, 45000, 58000, 72000],
-                                            borderColor: 'rgb(239, 68, 68)',
-                                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                            tension: 0.1
-                                        }
-                                    ]
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    plugins: {
-                                        legend: {
-                                            position: 'top',
-                                        },
-                                        title: {
-                                            display: true,
-                                            text: 'Análise de Valor Agregado (EVA)'
-                                        }
-                                    }
+            // Verificar tarefas vencendo
+            useEffect(() => {
+                if (isLoggedIn && tasks.length > 0) {
+                    const checkDeadlines = () => {
+                        const today = new Date();
+                        const tomorrow = new Date(today);
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        
+                        tasks.forEach(task => {
+                            if (task.dueDate) {
+                                const dueDate = new Date(task.dueDate);
+                                const diffTime = dueDate - today;
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                
+                                if (diffDays === 1) {
+                                    addNotification('warning', 'Tarefa Vencendo', `${task.title} vence amanhã!`);
+                                } else if (diffDays === 0) {
+                                    addNotification('error', 'Tarefa Vence Hoje', `${task.title} vence hoje!`);
+                                } else if (diffDays < 0 && task.status !== 'done') {
+                                    addNotification('error', 'Tarefa Atrasada', `${task.title} está atrasada!`);
                                 }
-                            });
-                        }
-
-                        // Gráfico de Riscos
-                        if (canvasRefs.risks.current) {
-                            const projectRisks = risks.filter(r => r.projectId === activeProject.id);
-                            const risksByStatus = {
-                                'Alto': projectRisks.filter(r => r.impact === 'high').length,
-                                'Médio': projectRisks.filter(r => r.impact === 'medium').length,
-                                'Baixo': projectRisks.filter(r => r.impact === 'low').length
-                            };
-
-                            const ctx = canvasRefs.risks.current.getContext('2d');
-                            chartInstances.current.risks = new Chart(ctx, {
-                                type: 'doughnut',
-                                data: {
-                                    labels: Object.keys(risksByStatus),
-                                    datasets: [{
-                                        data: Object.values(risksByStatus),
-                                        backgroundColor: [
-                                            'rgba(239, 68, 68, 0.8)',
-                                            'rgba(251, 191, 36, 0.8)',
-                                            'rgba(34, 197, 94, 0.8)'
-                                        ]
-                                    }]
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    plugins: {
-                                        legend: {
-                                            position: 'bottom',
-                                        },
-                                        title: {
-                                            display: true,
-                                            text: 'Distribuição de Riscos'
-                                        }
-                                    }
-                                }
-                            });
-                        }
-
-                        // Gráfico de Performance dos Domínios
-                        if (canvasRefs.performance.current) {
-                            const ctx = canvasRefs.performance.current.getContext('2d');
-                            chartInstances.current.performance = new Chart(ctx, {
-                                type: 'radar',
-                                data: {
-                                    labels: performanceDomains.map(d => d.name),
-                                    datasets: [{
-                                        label: 'Performance Atual',
-                                        data: [85, 70, 60, 80, 75, 90, 65, 70],
-                                        borderColor: 'rgb(59, 130, 246)',
-                                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                                    }]
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    scales: {
-                                        r: {
-                                            beginAtZero: true,
-                                            max: 100
-                                        }
-                                    },
-                                    plugins: {
-                                        title: {
-                                            display: true,
-                                            text: 'Performance por Domínio PMBOK'
-                                        }
-                                    }
-                                }
-                            });
-                        }
-                    }
-
-                    return () => {
-                        Object.values(chartInstances.current).forEach(chart => {
-                            if (chart) chart.destroy();
+                            }
                         });
                     };
-                }, [activeProject, risks]);
+                    
+                    checkDeadlines();
+                    const interval = setInterval(checkDeadlines, 3600000); // Check every hour
+                    return () => clearInterval(interval);
+                }
+            }, [isLoggedIn, tasks]);
+
+            // Componente de Login/Registro
+            const LoginSystem = () => {
+                const [isRegister, setIsRegister] = useState(false);
+                const [formData, setFormData] = useState({
+                    email: '',
+                    password: '',
+                    name: '',
+                    company: '',
+                    role: ''
+                });
+
+                const handleLogin = (e) => {
+                    e.preventDefault();
+                    const user = users.find(u => u.email === formData.email && u.password === formData.password);
+                    
+                    if (user) {
+                        setCurrentUser(user);
+                        setIsLoggedIn(true);
+                        setShowLogin(false);
+                        localStorage.setItem('pmbok_currentUser', JSON.stringify(user));
+                        addNotification('success', 'Login Realizado', `Bem-vindo de volta, ${user.name}!`);
+                    } else {
+                        addNotification('error', 'Erro no Login', 'Email ou senha incorretos');
+                    }
+                };
+
+                const handleRegister = (e) => {
+                    e.preventDefault();
+                    const newUser = {
+                        id: Date.now(),
+                        ...formData,
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    setUsers(prev => [...prev, newUser]);
+                    setCurrentUser(newUser);
+                    setIsLoggedIn(true);
+                    setShowLogin(false);
+                    localStorage.setItem('pmbok_currentUser', JSON.stringify(newUser));
+                    addNotification('success', 'Conta Criada', 'Bem-vindo ao PMBOK Manager Pro!');
+                };
+
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600 p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+                            <div className="text-center mb-8">
+                                <h1 className="text-3xl font-bold text-gray-800">PMBOK 7 Manager Pro</h1>
+                                <p className="text-gray-600 mt-2">Sistema Profissional de Gestão de Projetos</p>
+                            </div>
+                            
+                            <form onSubmit={isRegister ? handleRegister : handleLogin}>
+                                {isRegister && (
+                                    <>
+                                        <div className="mb-4">
+                                            <label className="block text-gray-700 text-sm font-bold mb-2">Nome Completo</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
+                                                required
+                                                value={formData.name}
+                                                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                            />
+                                        </div>
+                                        <div className="mb-4">
+                                            <label className="block text-gray-700 text-sm font-bold mb-2">Empresa</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
+                                                value={formData.company}
+                                                onChange={(e) => setFormData({...formData, company: e.target.value})}
+                                            />
+                                        </div>
+                                        <div className="mb-4">
+                                            <label className="block text-gray-700 text-sm font-bold mb-2">Cargo</label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
+                                                value={formData.role}
+                                                onChange={(e) => setFormData({...formData, role: e.target.value})}
+                                            />
+                                        </div>
+                                    </>
+                                )}
+                                
+                                <div className="mb-4">
+                                    <label className="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                                    <input
+                                        type="email"
+                                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
+                                        required
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                    />
+                                </div>
+                                
+                                <div className="mb-6">
+                                    <label className="block text-gray-700 text-sm font-bold mb-2">Senha</label>
+                                    <input
+                                        type="password"
+                                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
+                                        required
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                    />
+                                </div>
+                                
+                                <button
+                                    type="submit"
+                                    className="w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-300"
+                                >
+                                    {isRegister ? 'Criar Conta' : 'Entrar'}
+                                </button>
+                            </form>
+                            
+                            <div className="mt-6 text-center">
+                                <button
+                                    onClick={() => setIsRegister(!isRegister)}
+                                    className="text-blue-500 hover:underline"
+                                >
+                                    {isRegister ? 'Já tem conta? Faça login' : 'Não tem conta? Registre-se'}
+                                </button>
+                            </div>
+                            
+                            <div className="mt-4 text-center">
+                                <button
+                                    onClick={() => {
+                                        const demoUser = {
+                                            id: 0,
+                                            name: 'Usuário Demo',
+                                            email: 'demo@pmbok.com',
+                                            company: 'Demo Company',
+                                            role: 'Project Manager'
+                                        };
+                                        setCurrentUser(demoUser);
+                                        setIsLoggedIn(true);
+                                        setShowLogin(false);
+                                        addNotification('info', 'Modo Demo', 'Você entrou no modo demonstração');
+                                    }}
+                                    className="text-gray-500 hover:underline text-sm"
+                                >
+                                    Entrar no Modo Demo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Componente de Notificações
+            const NotificationSystem = () => {
+                return (
+                    <div className="fixed top-4 right-4 z-50 space-y-2">
+                        {notifications.map(notification => (
+                            <div
+                                key={notification.id}
+                                className={`notification-enter bg-white shadow-lg rounded-lg p-4 max-w-sm border-l-4 ${
+                                    notification.type === 'success' ? 'border-green-500' :
+                                    notification.type === 'error' ? 'border-red-500' :
+                                    notification.type === 'warning' ? 'border-yellow-500' :
+                                    'border-blue-500'
+                                }`}
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h4 className="font-semibold">{notification.title}</h4>
+                                        <p className="text-sm text-gray-600">{notification.message}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => removeNotification(notification.id)}
+                                        className="ml-4 text-gray-400 hover:text-gray-600"
+                                    >
+                                        <i data-lucide="x" className="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                );
+            };
+
+            // Função para exportar PDF
+            const exportToPDF = async () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Configurar fonte
+                doc.setFontSize(20);
+                doc.text('Relatório do Projeto', 20, 20);
+                
+                if (activeProject) {
+                    doc.setFontSize(16);
+                    doc.text(activeProject.name, 20, 35);
+                    
+                    doc.setFontSize(12);
+                    doc.text(`Descrição: ${activeProject.description || 'N/A'}`, 20, 50);
+                    doc.text(`Data Início: ${activeProject.startDate || 'N/A'}`, 20, 60);
+                    doc.text(`Data Fim: ${activeProject.endDate || 'N/A'}`, 20, 70);
+                    doc.text(`Orçamento: ${activeProject.budget || 'N/A'}`, 20, 80);
+                    doc.text(`Status: ${activeProject.status || 'N/A'}`, 20, 90);
+                    
+                    // Adicionar riscos
+                    const projectRisks = risks.filter(r => r.projectId === activeProject.id);
+                    if (projectRisks.length > 0) {
+                        doc.text('Riscos:', 20, 110);
+                        let yPos = 120;
+                        projectRisks.forEach((risk, idx) => {
+                            doc.text(`${idx + 1}. ${risk.description}`, 25, yPos);
+                            yPos += 10;
+                        });
+                    }
+                    
+                    // Adicionar stakeholders
+                    const projectStakeholders = stakeholders.filter(s => s.projectId === activeProject.id);
+                    if (projectStakeholders.length > 0 && yPos < 250) {
+                        doc.text('Stakeholders:', 20, yPos + 10);
+                        yPos += 20;
+                        projectStakeholders.forEach((stakeholder, idx) => {
+                            if (yPos < 270) {
+                                doc.text(`${idx + 1}. ${stakeholder.name} - ${stakeholder.role}`, 25, yPos);
+                                yPos += 10;
+                            }
+                        });
+                    }
+                }
+                
+                // Adicionar data de geração
+                const today = new Date().toLocaleDateString('pt-BR');
+                doc.setFontSize(10);
+                doc.text(`Gerado em: ${today}`, 20, 280);
+                doc.text(`Por: ${currentUser?.name || 'Usuário'}`, 100, 280);
+                
+                // Salvar PDF
+                doc.save(`projeto-${activeProject?.name || 'relatorio'}.pdf`);
+                addNotification('success', 'PDF Exportado', 'Relatório salvo com sucesso!');
+            };
+
+            // Integração com Google Calendar (simulada)
+            const syncWithGoogleCalendar = () => {
+                // Em produção, isso usaria a API do Google Calendar
+                const events = tasks.map(task => ({
+                    title: task.title,
+                    start: task.dueDate,
+                    description: task.description
+                }));
+                
+                // Simular exportação
+                const calendarData = {
+                    events,
+                    projectName: activeProject?.name,
+                    exportDate: new Date().toISOString()
+                };
+                
+                const blob = new Blob([JSON.stringify(calendarData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `calendar-${activeProject?.name || 'events'}.json`;
+                a.click();
+                
+                addNotification('success', 'Calendário Exportado', 'Eventos prontos para importação no Google Calendar');
+            };
+
+            // Dashboard Avançado
+            const Dashboard = () => {
+                const chartRef = useRef(null);
+                const progressChartRef = useRef(null);
+                const chartInstance = useRef(null);
+                const progressChartInstance = useRef(null);
+
+                useEffect(() => {
+                    if (chartRef.current) {
+                        const ctx = chartRef.current.getContext('2d');
+                        
+                        if (chartInstance.current) {
+                            chartInstance.current.destroy();
+                        }
+                        
+                        chartInstance.current = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: ['Riscos', 'Tarefas', 'Entregas', 'Stakeholders'],
+                                datasets: [{
+                                    label: 'Quantidade',
+                                    data: [
+                                        risks.filter(r => r.projectId === activeProject?.id).length,
+                                        tasks.filter(t => t.projectId === activeProject?.id).length,
+                                        deliverables.filter(d => d.projectId === activeProject?.id).length,
+                                        stakeholders.filter(s => s.projectId === activeProject?.id).length
+                                    ],
+                                    backgroundColor: [
+                                        'rgba(255, 99, 132, 0.5)',
+                                        'rgba(54, 162, 235, 0.5)',
+                                        'rgba(255, 206, 86, 0.5)',
+                                        'rgba(75, 192, 192, 0.5)'
+                                    ],
+                                    borderColor: [
+                                        'rgba(255, 99, 132, 1)',
+                                        'rgba(54, 162, 235, 1)',
+                                        'rgba(255, 206, 86, 1)',
+                                        'rgba(75, 192, 192, 1)'
+                                    ],
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                },
+                                responsive: true,
+                                maintainAspectRatio: false
+                            }
+                        });
+                    }
+                    
+                    if (progressChartRef.current) {
+                        const ctx = progressChartRef.current.getContext('2d');
+                        
+                        if (progressChartInstance.current) {
+                            progressChartInstance.current.destroy();
+                        }
+                        
+                        const projectTasks = tasks.filter(t => t.projectId === activeProject?.id);
+                        const completedTasks = projectTasks.filter(t => t.status === 'done').length;
+                        const inProgressTasks = projectTasks.filter(t => t.status === 'in_progress').length;
+                        const todoTasks = projectTasks.filter(t => t.status === 'todo').length;
+                        
+                        progressChartInstance.current = new Chart(ctx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Concluídas', 'Em Progresso', 'A Fazer'],
+                                datasets: [{
+                                    data: [completedTasks, inProgressTasks, todoTasks],
+                                    backgroundColor: [
+                                        'rgba(75, 192, 192, 0.5)',
+                                        'rgba(255, 206, 86, 0.5)',
+                                        'rgba(255, 99, 132, 0.5)'
+                                    ],
+                                    borderColor: [
+                                        'rgba(75, 192, 192, 1)',
+                                        'rgba(255, 206, 86, 1)',
+                                        'rgba(255, 99, 132, 1)'
+                                    ],
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false
+                            }
+                        });
+                    }
+                    
+                    return () => {
+                        if (chartInstance.current) {
+                            chartInstance.current.destroy();
+                        }
+                        if (progressChartInstance.current) {
+                            progressChartInstance.current.destroy();
+                        }
+                    };
+                }, [activeProject, risks, tasks, deliverables, stakeholders]);
 
                 if (!activeProject) {
                     return (
                         <div className="flex items-center justify-center h-full">
                             <div className="text-center">
                                 <i data-lucide="folder-open" className="w-16 h-16 text-gray-300 mx-auto mb-4"></i>
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum projeto selecionado</h3>
+                                <h3 className="text-lg font-medium text-gray-900">{t('projects')}</h3>
                                 <p className="text-gray-500">Selecione ou crie um projeto para começar</p>
+                                <button
+                                    onClick={() => setShowModal('project')}
+                                    className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                >
+                                    {t('newProject')}
+                                </button>
                             </div>
                         </div>
                     );
                 }
 
-                // Calcular métricas do projeto
-                const projectRisks = risks.filter(r => r.projectId === activeProject.id);
-                const projectStakeholders = stakeholders.filter(s => s.projectId === activeProject.id);
-                const projectDeliverables = deliverables.filter(d => d.projectId === activeProject.id);
-                const projectChanges = changes.filter(c => c.projectId === activeProject.id);
-
-                const metrics = {
-                    cpi: 0.94, // Cost Performance Index
-                    spi: 0.88, // Schedule Performance Index
-                    risksOpen: projectRisks.filter(r => r.status === 'open').length,
-                    deliverablesPending: projectDeliverables.filter(d => d.status !== 'completed').length,
-                    changesPending: projectChanges.filter(c => c.status === 'pending').length,
-                    stakeholdersEngaged: projectStakeholders.filter(s => s.engagement === 'high').length
-                };
+                const projectTasks = tasks.filter(t => t.projectId === activeProject.id);
+                const upcomingDeadlines = projectTasks
+                    .filter(t => t.dueDate && t.status !== 'done')
+                    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+                    .slice(0, 5);
 
                 return (
                     <div className="space-y-6">
                         {/* Header do Projeto */}
                         <div className="bg-white rounded-lg shadow p-6">
-                            <div className="flex items-start justify-between">
+                            <div className="flex justify-between items-start">
                                 <div>
                                     <h2 className="text-2xl font-bold text-gray-900">{activeProject.name}</h2>
                                     <p className="text-gray-600 mt-1">{activeProject.description}</p>
-                                    <div className="flex items-center gap-4 mt-4">
-                                        <span className="text-sm text-gray-500">
-                                            Início: {activeProject.startDate || 'Não definido'}
-                                        </span>
-                                        <span className="text-sm text-gray-500">
-                                            Fim: {activeProject.endDate || 'Não definido'}
-                                        </span>
-                                        <span className="text-sm text-gray-500">
-                                            Orçamento: {activeProject.budget || 'Não definido'}
-                                        </span>
-                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className={`px-3 py-1 rounded-full text-sm ${
-                                        activeProject.status === 'active' ? 'bg-green-100 text-green-800' :
-                                        activeProject.status === 'planning' ? 'bg-blue-100 text-blue-800' :
-                                        activeProject.status === 'on-hold' ? 'bg-yellow-100 text-yellow-800' :
-                                        'bg-gray-100 text-gray-800'
-                                    }`}>
-                                        {activeProject.status === 'active' ? 'Ativo' :
-                                         activeProject.status === 'planning' ? 'Planejamento' :
-                                         activeProject.status === 'on-hold' ? 'Pausado' :
-                                         'Concluído'}
-                                    </span>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={exportToPDF}
+                                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center gap-2"
+                                    >
+                                        <i data-lucide="download" className="w-4 h-4"></i>
+                                        {t('exportPdf')}
+                                    </button>
+                                    <button
+                                        onClick={syncWithGoogleCalendar}
+                                        className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 flex items-center gap-2"
+                                    >
+                                        <i data-lucide="calendar" className="w-4 h-4"></i>
+                                        Sync Calendar
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        {/* KPIs Principais */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                        {/* KPIs */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div className="bg-white rounded-lg shadow p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm text-gray-500">CPI</p>
-                                        <p className="text-2xl font-bold text-gray-900">{metrics.cpi}</p>
+                                        <p className="text-sm text-gray-500">Total de Tarefas</p>
+                                        <p className="text-2xl font-bold">{projectTasks.length}</p>
                                     </div>
-                                    <i data-lucide="dollar-sign" className={`w-8 h-8 ${metrics.cpi >= 1 ? 'text-green-500' : 'text-red-500'}`}></i>
+                                    <i data-lucide="check-square" className="w-8 h-8 text-blue-500"></i>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-2">Índice de Desempenho de Custo</p>
                             </div>
                             <div className="bg-white rounded-lg shadow p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm text-gray-500">SPI</p>
-                                        <p className="text-2xl font-bold text-gray-900">{metrics.spi}</p>
+                                        <p className="text-sm text-gray-500">Concluídas</p>
+                                        <p className="text-2xl font-bold">
+                                            {projectTasks.filter(t => t.status === 'done').length}
+                                        </p>
                                     </div>
-                                    <i data-lucide="clock" className={`w-8 h-8 ${metrics.spi >= 1 ? 'text-green-500' : 'text-red-500'}`}></i>
+                                    <i data-lucide="check-circle" className="w-8 h-8 text-green-500"></i>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-2">Índice de Desempenho de Prazo</p>
                             </div>
                             <div className="bg-white rounded-lg shadow p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-sm text-gray-500">Riscos Abertos</p>
-                                        <p className="text-2xl font-bold text-gray-900">{metrics.risksOpen}</p>
+                                        <p className="text-2xl font-bold">
+                                            {risks.filter(r => r.projectId === activeProject.id && r.status === 'open').length}
+                                        </p>
                                     </div>
                                     <i data-lucide="alert-triangle" className="w-8 h-8 text-orange-500"></i>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-2">Necessitam atenção</p>
-                            </div>
-                            <div className="bg-white rounded-lg shadow p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-gray-500">Entregas</p>
-                                        <p className="text-2xl font-bold text-gray-900">{metrics.deliverablesPending}</p>
-                                    </div>
-                                    <i data-lucide="package" className="w-8 h-8 text-blue-500"></i>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-2">Pendentes</p>
-                            </div>
-                            <div className="bg-white rounded-lg shadow p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-gray-500">Mudanças</p>
-                                        <p className="text-2xl font-bold text-gray-900">{metrics.changesPending}</p>
-                                    </div>
-                                    <i data-lucide="refresh-cw" className="w-8 h-8 text-purple-500"></i>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-2">Aguardando aprovação</p>
                             </div>
                             <div className="bg-white rounded-lg shadow p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-sm text-gray-500">Stakeholders</p>
-                                        <p className="text-2xl font-bold text-gray-900">{metrics.stakeholdersEngaged}</p>
+                                        <p className="text-2xl font-bold">
+                                            {stakeholders.filter(s => s.projectId === activeProject.id).length}
+                                        </p>
                                     </div>
-                                    <i data-lucide="users" className="w-8 h-8 text-green-500"></i>
+                                    <i data-lucide="users" className="w-8 h-8 text-purple-500"></i>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-2">Alto engajamento</p>
                             </div>
                         </div>
 
                         {/* Gráficos */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="bg-white rounded-lg shadow p-6">
+                                <h3 className="text-lg font-semibold mb-4">Visão Geral do Projeto</h3>
                                 <div className="h-64">
-                                    <canvas ref={canvasRefs.eva}></canvas>
+                                    <canvas ref={chartRef}></canvas>
                                 </div>
                             </div>
                             <div className="bg-white rounded-lg shadow p-6">
+                                <h3 className="text-lg font-semibold mb-4">Progresso das Tarefas</h3>
                                 <div className="h-64">
-                                    <canvas ref={canvasRefs.risks}></canvas>
+                                    <canvas ref={progressChartRef}></canvas>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Performance por Domínio */}
+                        {/* Próximos Prazos */}
                         <div className="bg-white rounded-lg shadow p-6">
-                            <div className="h-80">
-                                <canvas ref={canvasRefs.performance}></canvas>
-                            </div>
-                        </div>
-
-                        {/* Os 12 Princípios */}
-                        <div className="bg-white rounded-lg shadow p-6">
-                            <h3 className="text-lg font-semibold mb-4">Os 12 Princípios do PMBOK 7</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {pmbokPrinciples.map(principle => (
-                                    <div key={principle.id} className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                                        <i data-lucide={principle.icon} className="w-5 h-5 text-blue-500 mt-0.5"></i>
-                                        <div>
-                                            <h4 className="font-medium text-sm">{principle.name}</h4>
-                                            <p className="text-xs text-gray-500 mt-1">{principle.description}</p>
+                            <h3 className="text-lg font-semibold mb-4">Próximos Prazos</h3>
+                            {upcomingDeadlines.length > 0 ? (
+                                <div className="space-y-2">
+                                    {upcomingDeadlines.map(task => (
+                                        <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                                            <div>
+                                                <h4 className="font-medium">{task.title}</h4>
+                                                <p className="text-sm text-gray-500">{task.description}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm font-medium">
+                                                    {new Date(task.dueDate).toLocaleDateString('pt-BR')}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    {Math.ceil((new Date(task.dueDate) - new Date()) / (1000 * 60 * 60 * 24))} dias
+                                                </p>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                );
-            };
-
-            // Componente Project Charter
-            const ProjectCharter = () => {
-                const projectCharter = projectCharters.find(c => c.projectId === activeProject?.id);
-
-                const handleSaveCharter = (charter) => {
-                    if (projectCharter) {
-                        setProjectCharters(projectCharters.map(c => 
-                            c.projectId === activeProject.id ? charter : c
-                        ));
-                    } else {
-                        setProjectCharters([...projectCharters, charter]);
-                    }
-                    setShowModal(null);
-                };
-
-                return (
-                    <div className="space-y-6">
-                        <div className="bg-white rounded-lg shadow p-6">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold text-gray-900">Project Charter</h2>
-                                <button
-                                    onClick={() => setShowModal('charter')}
-                                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2"
-                                >
-                                    <i data-lucide={projectCharter ? 'edit' : 'plus'} className="w-4 h-4"></i>
-                                    {projectCharter ? 'Editar Charter' : 'Criar Charter'}
-                                </button>
-                            </div>
-
-                            {projectCharter ? (
-                                <div className="space-y-4">
-                                    <div className="border-l-4 border-blue-500 pl-4">
-                                        <h3 className="font-semibold text-gray-700">Justificativa do Projeto</h3>
-                                        <p className="text-gray-600 mt-1">{projectCharter.justification}</p>
-                                    </div>
-                                    <div className="border-l-4 border-green-500 pl-4">
-                                        <h3 className="font-semibold text-gray-700">Objetivos</h3>
-                                        <p className="text-gray-600 mt-1">{projectCharter.objectives}</p>
-                                    </div>
-                                    <div className="border-l-4 border-yellow-500 pl-4">
-                                        <h3 className="font-semibold text-gray-700">Escopo de Alto Nível</h3>
-                                        <p className="text-gray-600 mt-1">{projectCharter.highLevelScope}</p>
-                                    </div>
-                                    <div className="border-l-4 border-purple-500 pl-4">
-                                        <h3 className="font-semibold text-gray-700">Principais Entregas</h3>
-                                        <p className="text-gray-600 mt-1">{projectCharter.keyDeliverables}</p>
-                                    </div>
-                                    <div className="border-l-4 border-red-500 pl-4">
-                                        <h3 className="font-semibold text-gray-700">Riscos de Alto Nível</h3>
-                                        <p className="text-gray-600 mt-1">{projectCharter.highLevelRisks}</p>
-                                    </div>
-                                    <div className="border-l-4 border-indigo-500 pl-4">
-                                        <h3 className="font-semibold text-gray-700">Premissas e Restrições</h3>
-                                        <p className="text-gray-600 mt-1">{projectCharter.assumptions}</p>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                                        <div className="bg-gray-50 p-4 rounded">
-                                            <h4 className="text-sm font-semibold text-gray-700">Gerente do Projeto</h4>
-                                            <p className="text-gray-600">{projectCharter.projectManager}</p>
-                                        </div>
-                                        <div className="bg-gray-50 p-4 rounded">
-                                            <h4 className="text-sm font-semibold text-gray-700">Patrocinador</h4>
-                                            <p className="text-gray-600">{projectCharter.sponsor}</p>
-                                        </div>
-                                        <div className="bg-gray-50 p-4 rounded">
-                                            <h4 className="text-sm font-semibold text-gray-700">Data de Aprovação</h4>
-                                            <p className="text-gray-600">{projectCharter.approvalDate}</p>
-                                        </div>
-                                    </div>
+                                    ))}
                                 </div>
                             ) : (
-                                <div className="text-center py-12">
-                                    <i data-lucide="file-text" className="w-12 h-12 text-gray-300 mx-auto mb-3"></i>
-                                    <p className="text-gray-500">Nenhum charter criado para este projeto</p>
-                                    <p className="text-sm text-gray-400 mt-1">Clique no botão acima para criar o Project Charter</p>
-                                </div>
+                                <p className="text-gray-500">Nenhum prazo próximo</p>
                             )}
-                        </div>
-
-                        {/* Modal de Charter */}
-                        {showModal === 'charter' && (
-                            <CharterModal
-                                charter={projectCharter}
-                                projectId={activeProject?.id}
-                                onSave={handleSaveCharter}
-                                onClose={() => setShowModal(null)}
-                            />
-                        )}
-                    </div>
-                );
-            };
-
-            // Modal do Project Charter
-            const CharterModal = ({ charter, projectId, onSave, onClose }) => {
-                const [formData, setFormData] = useState(charter || {
-                    projectId: projectId,
-                    justification: '',
-                    objectives: '',
-                    highLevelScope: '',
-                    keyDeliverables: '',
-                    highLevelRisks: '',
-                    assumptions: '',
-                    projectManager: '',
-                    sponsor: '',
-                    approvalDate: ''
-                });
-
-                const handleSubmit = (e) => {
-                    e.preventDefault();
-                    onSave(formData);
-                };
-
-                return (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-                            <h3 className="text-xl font-bold mb-4">Project Charter</h3>
-                            <form onSubmit={handleSubmit}>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Justificativa do Projeto</label>
-                                        <textarea
-                                            className="w-full border rounded px-3 py-2"
-                                            rows="3"
-                                            required
-                                            value={formData.justification}
-                                            onChange={(e) => setFormData({...formData, justification: e.target.value})}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Objetivos</label>
-                                        <textarea
-                                            className="w-full border rounded px-3 py-2"
-                                            rows="3"
-                                            required
-                                            value={formData.objectives}
-                                            onChange={(e) => setFormData({...formData, objectives: e.target.value})}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Escopo de Alto Nível</label>
-                                        <textarea
-                                            className="w-full border rounded px-3 py-2"
-                                            rows="3"
-                                            required
-                                            value={formData.highLevelScope}
-                                            onChange={(e) => setFormData({...formData, highLevelScope: e.target.value})}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Principais Entregas</label>
-                                        <textarea
-                                            className="w-full border rounded px-3 py-2"
-                                            rows="3"
-                                            required
-                                            value={formData.keyDeliverables}
-                                            onChange={(e) => setFormData({...formData, keyDeliverables: e.target.value})}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Riscos de Alto Nível</label>
-                                        <textarea
-                                            className="w-full border rounded px-3 py-2"
-                                            rows="3"
-                                            required
-                                            value={formData.highLevelRisks}
-                                            onChange={(e) => setFormData({...formData, highLevelRisks: e.target.value})}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Premissas e Restrições</label>
-                                        <textarea
-                                            className="w-full border rounded px-3 py-2"
-                                            rows="3"
-                                            required
-                                            value={formData.assumptions}
-                                            onChange={(e) => setFormData({...formData, assumptions: e.target.value})}
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Gerente do Projeto</label>
-                                            <input
-                                                type="text"
-                                                className="w-full border rounded px-3 py-2"
-                                                required
-                                                value={formData.projectManager}
-                                                onChange={(e) => setFormData({...formData, projectManager: e.target.value})}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Patrocinador</label>
-                                            <input
-                                                type="text"
-                                                className="w-full border rounded px-3 py-2"
-                                                required
-                                                value={formData.sponsor}
-                                                onChange={(e) => setFormData({...formData, sponsor: e.target.value})}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Data de Aprovação</label>
-                                            <input
-                                                type="date"
-                                                className="w-full border rounded px-3 py-2"
-                                                required
-                                                value={formData.approvalDate}
-                                                onChange={(e) => setFormData({...formData, approvalDate: e.target.value})}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex justify-end gap-2 mt-6">
-                                    <button
-                                        type="button"
-                                        onClick={onClose}
-                                        className="px-4 py-2 border rounded hover:bg-gray-50"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                                    >
-                                        Salvar Charter
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                );
-            };
-
-            // Componente de Gestão de Stakeholders
-            const StakeholdersView = () => {
-                const projectStakeholders = stakeholders.filter(s => s.projectId === activeProject?.id);
-
-                const handleSaveStakeholder = (stakeholder) => {
-                    if (editingItem) {
-                        setStakeholders(stakeholders.map(s => 
-                            s.id === stakeholder.id ? stakeholder : s
-                        ));
-                    } else {
-                        setStakeholders([...stakeholders, { ...stakeholder, id: Date.now() }]);
-                    }
-                    setShowModal(null);
-                    setEditingItem(null);
-                };
-
-                const handleDeleteStakeholder = (id) => {
-                    if (window.confirm('Deseja remover este stakeholder?')) {
-                        setStakeholders(stakeholders.filter(s => s.id !== id));
-                    }
-                };
-
-                const getInfluenceColor = (level) => {
-                    switch(level) {
-                        case 'high': return 'text-red-600 bg-red-50';
-                        case 'medium': return 'text-yellow-600 bg-yellow-50';
-                        case 'low': return 'text-green-600 bg-green-50';
-                        default: return 'text-gray-600 bg-gray-50';
-                    }
-                };
-
-                const getEngagementIcon = (level) => {
-                    switch(level) {
-                        case 'high': return 'user-check';
-                        case 'medium': return 'user';
-                        case 'low': return 'user-minus';
-                        default: return 'user';
-                    }
-                };
-
-                return (
-                    <div className="space-y-6">
-                        <div className="bg-white rounded-lg shadow">
-                            <div className="p-6 border-b">
-                                <div className="flex items-center justify-between">
-                                    <h2 className="text-2xl font-bold text-gray-900">Gestão de Stakeholders</h2>
-                                    <button
-                                        onClick={() => setShowModal('stakeholder')}
-                                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2"
-                                    >
-                                        <i data-lucide="user-plus" className="w-4 h-4"></i>
-                                        Adicionar Stakeholder
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="p-6">
-                                {/* Matriz de Poder/Interesse */}
-                                <div className="mb-6">
-                                    <h3 className="text-lg font-semibold mb-4">Matriz Poder/Interesse</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-green-50 p-4 rounded">
-                                            <h4 className="font-medium text-green-800 mb-2">Gerenciar de Perto</h4>
-                                            <p className="text-sm text-green-600">Alto Poder + Alto Interesse</p>
-                                            <div className="mt-2">
-                                                {projectStakeholders.filter(s => s.power === 'high' && s.interest === 'high').map(s => (
-                                                    <span key={s.id} className="inline-block px-2 py-1 bg-white rounded text-xs mr-1 mb-1">{s.name}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="bg-yellow-50 p-4 rounded">
-                                            <h4 className="font-medium text-yellow-800 mb-2">Manter Satisfeito</h4>
-                                            <p className="text-sm text-yellow-600">Alto Poder + Baixo Interesse</p>
-                                            <div className="mt-2">
-                                                {projectStakeholders.filter(s => s.power === 'high' && s.interest === 'low').map(s => (
-                                                    <span key={s.id} className="inline-block px-2 py-1 bg-white rounded text-xs mr-1 mb-1">{s.name}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="bg-blue-50 p-4 rounded">
-                                            <h4 className="font-medium text-blue-800 mb-2">Manter Informado</h4>
-                                            <p className="text-sm text-blue-600">Baixo Poder + Alto Interesse</p>
-                                            <div className="mt-2">
-                                                {projectStakeholders.filter(s => s.power === 'low' && s.interest === 'high').map(s => (
-                                                    <span key={s.id} className="inline-block px-2 py-1 bg-white rounded text-xs mr-1 mb-1">{s.name}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="bg-gray-50 p-4 rounded">
-                                            <h4 className="font-medium text-gray-800 mb-2">Monitorar</h4>
-                                            <p className="text-sm text-gray-600">Baixo Poder + Baixo Interesse</p>
-                                            <div className="mt-2">
-                                                {projectStakeholders.filter(s => s.power === 'low' && s.interest === 'low').map(s => (
-                                                    <span key={s.id} className="inline-block px-2 py-1 bg-white rounded text-xs mr-1 mb-1">{s.name}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Lista de Stakeholders */}
-                                <h3 className="text-lg font-semibold mb-4">Registro de Stakeholders</h3>
-                                {projectStakeholders.length > 0 ? (
-                                    <div className="overflow-x-auto">
-                                        <table className="min-w-full divide-y divide-gray-200">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Papel</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Influência</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Engajamento</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estratégia</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                {projectStakeholders.map(stakeholder => (
-                                                    <tr key={stakeholder.id}>
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div>
-                                                                <div className="text-sm font-medium text-gray-900">{stakeholder.name}</div>
-                                                                <div className="text-sm text-gray-500">{stakeholder.organization}</div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                            {stakeholder.role}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <span className={`px-2 py-1 text-xs rounded-full ${getInfluenceColor(stakeholder.influence)}`}>
-                                                                {stakeholder.influence === 'high' ? 'Alta' : 
-                                                                 stakeholder.influence === 'medium' ? 'Média' : 'Baixa'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <i data-lucide={getEngagementIcon(stakeholder.engagement)} 
-                                                               className={`w-5 h-5 ${
-                                                                   stakeholder.engagement === 'high' ? 'text-green-500' :
-                                                                   stakeholder.engagement === 'medium' ? 'text-yellow-500' :
-                                                                   'text-red-500'
-                                                               }`}></i>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-sm text-gray-500">
-                                                            {stakeholder.strategy}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                            <button
-                                                                onClick={() => {
-                                                                    setEditingItem(stakeholder);
-                                                                    setShowModal('stakeholder');
-                                                                }}
-                                                                className="text-blue-600 hover:text-blue-900 mr-2"
-                                                            >
-                                                                <i data-lucide="edit-2" className="w-4 h-4"></i>
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeleteStakeholder(stakeholder.id)}
-                                                                className="text-red-600 hover:text-red-900"
-                                                            >
-                                                                <i data-lucide="trash-2" className="w-4 h-4"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-12">
-                                        <i data-lucide="users" className="w-12 h-12 text-gray-300 mx-auto mb-3"></i>
-                                        <p className="text-gray-500">Nenhum stakeholder registrado</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Modal de Stakeholder */}
-                        {showModal === 'stakeholder' && (
-                            <StakeholderModal
-                                stakeholder={editingItem}
-                                projectId={activeProject?.id}
-                                onSave={handleSaveStakeholder}
-                                onClose={() => {
-                                    setShowModal(null);
-                                    setEditingItem(null);
-                                }}
-                            />
-                        )}
-                    </div>
-                );
-            };
-
-            // Modal de Stakeholder
-            const StakeholderModal = ({ stakeholder, projectId, onSave, onClose }) => {
-                const [formData, setFormData] = useState(stakeholder || {
-                    projectId: projectId,
-                    name: '',
-                    organization: '',
-                    role: '',
-                    influence: 'medium',
-                    interest: 'medium',
-                    power: 'medium',
-                    engagement: 'medium',
-                    strategy: '',
-                    expectations: '',
-                    concerns: ''
-                });
-
-                const handleSubmit = (e) => {
-                    e.preventDefault();
-                    onSave(formData);
-                };
-
-                return (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                            <h3 className="text-xl font-bold mb-4">
-                                {stakeholder ? 'Editar Stakeholder' : 'Adicionar Stakeholder'}
-                            </h3>
-                            <form onSubmit={handleSubmit}>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Nome</label>
-                                        <input
-                                            type="text"
-                                            className="w-full border rounded px-3 py-2"
-                                            required
-                                            value={formData.name}
-                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Organização</label>
-                                        <input
-                                            type="text"
-                                            className="w-full border rounded px-3 py-2"
-                                            value={formData.organization}
-                                            onChange={(e) => setFormData({...formData, organization: e.target.value})}
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium mb-1">Papel/Função</label>
-                                        <input
-                                            type="text"
-                                            className="w-full border rounded px-3 py-2"
-                                            required
-                                            value={formData.role}
-                                            onChange={(e) => setFormData({...formData, role: e.target.value})}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Influência</label>
-                                        <select
-                                            className="w-full border rounded px-3 py-2"
-                                            value={formData.influence}
-                                            onChange={(e) => setFormData({...formData, influence: e.target.value})}
-                                        >
-                                            <option value="low">Baixa</option>
-                                            <option value="medium">Média</option>
-                                            <option value="high">Alta</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Interesse</label>
-                                        <select
-                                            className="w-full border rounded px-3 py-2"
-                                            value={formData.interest}
-                                            onChange={(e) => setFormData({...formData, interest: e.target.value})}
-                                        >
-                                            <option value="low">Baixo</option>
-                                            <option value="medium">Médio</option>
-                                            <option value="high">Alto</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Poder</label>
-                                        <select
-                                            className="w-full border rounded px-3 py-2"
-                                            value={formData.power}
-                                            onChange={(e) => setFormData({...formData, power: e.target.value})}
-                                        >
-                                            <option value="low">Baixo</option>
-                                            <option value="medium">Médio</option>
-                                            <option value="high">Alto</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Nível de Engajamento</label>
-                                        <select
-                                            className="w-full border rounded px-3 py-2"
-                                            value={formData.engagement}
-                                            onChange={(e) => setFormData({...formData, engagement: e.target.value})}
-                                        >
-                                            <option value="low">Baixo</option>
-                                            <option value="medium">Médio</option>
-                                            <option value="high">Alto</option>
-                                        </select>
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium mb-1">Estratégia de Engajamento</label>
-                                        <textarea
-                                            className="w-full border rounded px-3 py-2"
-                                            rows="2"
-                                            value={formData.strategy}
-                                            onChange={(e) => setFormData({...formData, strategy: e.target.value})}
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium mb-1">Expectativas</label>
-                                        <textarea
-                                            className="w-full border rounded px-3 py-2"
-                                            rows="2"
-                                            value={formData.expectations}
-                                            onChange={(e) => setFormData({...formData, expectations: e.target.value})}
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium mb-1">Preocupações</label>
-                                        <textarea
-                                            className="w-full border rounded px-3 py-2"
-                                            rows="2"
-                                            value={formData.concerns}
-                                            onChange={(e) => setFormData({...formData, concerns: e.target.value})}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex justify-end gap-2 mt-6">
-                                    <button
-                                        type="button"
-                                        onClick={onClose}
-                                        className="px-4 py-2 border rounded hover:bg-gray-50"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                                    >
-                                        Salvar
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                );
-            };
-
-            // Componente de Gestão de Riscos
-            const RisksView = () => {
-                const projectRisks = risks.filter(r => r.projectId === activeProject?.id);
-
-                const handleSaveRisk = (risk) => {
-                    if (editingItem) {
-                        setRisks(risks.map(r => 
-                            r.id === risk.id ? risk : r
-                        ));
-                    } else {
-                        setRisks([...risks, { ...risk, id: Date.now() }]);
-                    }
-                    setShowModal(null);
-                    setEditingItem(null);
-                };
-
-                const handleDeleteRisk = (id) => {
-                    if (window.confirm('Deseja remover este risco?')) {
-                        setRisks(risks.filter(r => r.id !== id));
-                    }
-                };
-
-                const getRiskScore = (probability, impact) => {
-                    const probValue = probability === 'high' ? 3 : probability === 'medium' ? 2 : 1;
-                    const impactValue = impact === 'high' ? 3 : impact === 'medium' ? 2 : 1;
-                    return probValue * impactValue;
-                };
-
-                const getRiskColor = (score) => {
-                    if (score >= 6) return 'bg-red-100 text-red-800';
-                    if (score >= 3) return 'bg-yellow-100 text-yellow-800';
-                    return 'bg-green-100 text-green-800';
-                };
-
-                return (
-                    <div className="space-y-6">
-                        <div className="bg-white rounded-lg shadow">
-                            <div className="p-6 border-b">
-                                <div className="flex items-center justify-between">
-                                    <h2 className="text-2xl font-bold text-gray-900">Registro de Riscos</h2>
-                                    <button
-                                        onClick={() => setShowModal('risk')}
-                                        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2"
-                                    >
-                                        <i data-lucide="alert-triangle" className="w-4 h-4"></i>
-                                        Adicionar Risco
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="p-6">
-                                {/* Matriz de Probabilidade x Impacto */}
-                                <div className="mb-6">
-                                    <h3 className="text-lg font-semibold mb-4">Matriz de Probabilidade x Impacto</h3>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        <div></div>
-                                        <div className="text-center text-sm font-medium">Baixo</div>
-                                        <div className="text-center text-sm font-medium">Médio</div>
-                                        <div className="text-center text-sm font-medium">Alto</div>
-                                        
-                                        <div className="text-sm font-medium">Alta</div>
-                                        <div className="bg-yellow-100 p-2 rounded text-center">
-                                            <span className="text-xs">
-                                                {projectRisks.filter(r => r.probability === 'high' && r.impact === 'low').length}
-                                            </span>
-                                        </div>
-                                        <div className="bg-orange-100 p-2 rounded text-center">
-                                            <span className="text-xs">
-                                                {projectRisks.filter(r => r.probability === 'high' && r.impact === 'medium').length}
-                                            </span>
-                                        </div>
-                                        <div className="bg-red-100 p-2 rounded text-center">
-                                            <span className="text-xs">
-                                                {projectRisks.filter(r => r.probability === 'high' && r.impact === 'high').length}
-                                            </span>
-                                        </div>
-
-                                        <div className="text-sm font-medium">Média</div>
-                                        <div className="bg-green-100 p-2 rounded text-center">
-                                            <span className="text-xs">
-                                                {projectRisks.filter(r => r.probability === 'medium' && r.impact === 'low').length}
-                                            </span>
-                                        </div>
-                                        <div className="bg-yellow-100 p-2 rounded text-center">
-                                            <span className="text-xs">
-                                                {projectRisks.filter(r => r.probability === 'medium' && r.impact === 'medium').length}
-                                            </span>
-                                        </div>
-                                        <div className="bg-orange-100 p-2 rounded text-center">
-                                            <span className="text-xs">
-                                                {projectRisks.filter(r => r.probability === 'medium' && r.impact === 'high').length}
-                                            </span>
-                                        </div>
-
-                                        <div className="text-sm font-medium">Baixa</div>
-                                        <div className="bg-green-50 p-2 rounded text-center">
-                                            <span className="text-xs">
-                                                {projectRisks.filter(r => r.probability === 'low' && r.impact === 'low').length}
-                                            </span>
-                                        </div>
-                                        <div className="bg-green-100 p-2 rounded text-center">
-                                            <span className="text-xs">
-                                                {projectRisks.filter(r => r.probability === 'low' && r.impact === 'medium').length}
-                                            </span>
-                                        </div>
-                                        <div className="bg-yellow-100 p-2 rounded text-center">
-                                            <span className="text-xs">
-                                                {projectRisks.filter(r => r.probability === 'low' && r.impact === 'high').length}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Lista de Riscos */}
-                                {projectRisks.length > 0 ? (
-                                    <div className="overflow-x-auto">
-                                        <table className="min-w-full divide-y divide-gray-200">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Probabilidade</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Impacto</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                {projectRisks.map((risk, index) => {
-                                                    const score = getRiskScore(risk.probability, risk.impact);
-                                                    return (
-                                                        <tr key={risk.id}>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                                R{String(index + 1).padStart(3, '0')}
-                                                            </td>
-                                                            <td className="px-6 py-4">
-                                                                <div>
-                                                                    <div className="text-sm font-medium text-gray-900">{risk.description}</div>
-                                                                    {risk.mitigation && (
-                                                                        <div className="text-sm text-gray-500">Mitigação: {risk.mitigation}</div>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                {risk.category}
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                {risk.probability === 'high' ? 'Alta' : 
-                                                                 risk.probability === 'medium' ? 'Média' : 'Baixa'}
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                {risk.impact === 'high' ? 'Alto' : 
-                                                                 risk.impact === 'medium' ? 'Médio' : 'Baixo'}
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                                <span className={`px-2 py-1 text-xs rounded-full ${getRiskColor(score)}`}>
-                                                                    {score}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                                <span className={`px-2 py-1 text-xs rounded-full ${
-                                                                    risk.status === 'open' ? 'bg-yellow-100 text-yellow-800' :
-                                                                    risk.status === 'mitigated' ? 'bg-green-100 text-green-800' :
-                                                                    'bg-gray-100 text-gray-800'
-                                                                }`}>
-                                                                    {risk.status === 'open' ? 'Aberto' :
-                                                                     risk.status === 'mitigated' ? 'Mitigado' :
-                                                                     'Fechado'}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setEditingItem(risk);
-                                                                        setShowModal('risk');
-                                                                    }}
-                                                                    className="text-blue-600 hover:text-blue-900 mr-2"
-                                                                >
-                                                                    <i data-lucide="edit-2" className="w-4 h-4"></i>
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleDeleteRisk(risk.id)}
-                                                                    className="text-red-600 hover:text-red-900"
-                                                                >
-                                                                    <i data-lucide="trash-2" className="w-4 h-4"></i>
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-12">
-                                        <i data-lucide="shield" className="w-12 h-12 text-gray-300 mx-auto mb-3"></i>
-                                        <p className="text-gray-500">Nenhum risco identificado</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Modal de Risco */}
-                        {showModal === 'risk' && (
-                            <RiskModal
-                                risk={editingItem}
-                                projectId={activeProject?.id}
-                                onSave={handleSaveRisk}
-                                onClose={() => {
-                                    setShowModal(null);
-                                    setEditingItem(null);
-                                }}
-                            />
-                        )}
-                    </div>
-                );
-            };
-
-            // Modal de Risco
-            const RiskModal = ({ risk, projectId, onSave, onClose }) => {
-                const [formData, setFormData] = useState(risk || {
-                    projectId: projectId,
-                    description: '',
-                    category: 'technical',
-                    probability: 'medium',
-                    impact: 'medium',
-                    status: 'open',
-                    owner: '',
-                    mitigation: '',
-                    contingency: '',
-                    trigger: ''
-                });
-
-                const handleSubmit = (e) => {
-                    e.preventDefault();
-                    onSave(formData);
-                };
-
-                return (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                            <h3 className="text-xl font-bold mb-4">
-                                {risk ? 'Editar Risco' : 'Adicionar Risco'}
-                            </h3>
-                            <form onSubmit={handleSubmit}>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Descrição do Risco</label>
-                                        <textarea
-                                            className="w-full border rounded px-3 py-2"
-                                            rows="2"
-                                            required
-                                            value={formData.description}
-                                            onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Categoria</label>
-                                            <select
-                                                className="w-full border rounded px-3 py-2"
-                                                value={formData.category}
-                                                onChange={(e) => setFormData({...formData, category: e.target.value})}
-                                            >
-                                                <option value="technical">Técnico</option>
-                                                <option value="external">Externo</option>
-                                                <option value="organizational">Organizacional</option>
-                                                <option value="project-management">Gerenciamento de Projeto</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Responsável</label>
-                                            <input
-                                                type="text"
-                                                className="w-full border rounded px-3 py-2"
-                                                value={formData.owner}
-                                                onChange={(e) => setFormData({...formData, owner: e.target.value})}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Probabilidade</label>
-                                            <select
-                                                className="w-full border rounded px-3 py-2"
-                                                value={formData.probability}
-                                                onChange={(e) => setFormData({...formData, probability: e.target.value})}
-                                            >
-                                                <option value="low">Baixa</option>
-                                                <option value="medium">Média</option>
-                                                <option value="high">Alta</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Impacto</label>
-                                            <select
-                                                className="w-full border rounded px-3 py-2"
-                                                value={formData.impact}
-                                                onChange={(e) => setFormData({...formData, impact: e.target.value})}
-                                            >
-                                                <option value="low">Baixo</option>
-                                                <option value="medium">Médio</option>
-                                                <option value="high">Alto</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Status</label>
-                                            <select
-                                                className="w-full border rounded px-3 py-2"
-                                                value={formData.status}
-                                                onChange={(e) => setFormData({...formData, status: e.target.value})}
-                                            >
-                                                <option value="open">Aberto</option>
-                                                <option value="mitigated">Mitigado</option>
-                                                <option value="closed">Fechado</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Gatilho</label>
-                                        <input
-                                            type="text"
-                                            className="w-full border rounded px-3 py-2"
-                                            placeholder="Condição que indica que o risco está ocorrendo"
-                                            value={formData.trigger}
-                                            onChange={(e) => setFormData({...formData, trigger: e.target.value})}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Estratégia de Mitigação</label>
-                                        <textarea
-                                            className="w-full border rounded px-3 py-2"
-                                            rows="2"
-                                            placeholder="Como prevenir ou reduzir a probabilidade/impacto"
-                                            value={formData.mitigation}
-                                            onChange={(e) => setFormData({...formData, mitigation: e.target.value})}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Plano de Contingência</label>
-                                        <textarea
-                                            className="w-full border rounded px-3 py-2"
-                                            rows="2"
-                                            placeholder="O que fazer se o risco ocorrer"
-                                            value={formData.contingency}
-                                            onChange={(e) => setFormData({...formData, contingency: e.target.value})}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex justify-end gap-2 mt-6">
-                                    <button
-                                        type="button"
-                                        onClick={onClose}
-                                        className="px-4 py-2 border rounded hover:bg-gray-50"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                                    >
-                                        Salvar Risco
-                                    </button>
-                                </div>
-                            </form>
                         </div>
                     </div>
                 );
@@ -1438,24 +772,30 @@
                     endDate: '',
                     budget: '',
                     status: 'planning',
-                    methodology: 'hybrid'
+                    manager: currentUser?.name || ''
                 });
 
                 const handleSubmit = (e) => {
                     e.preventDefault();
-                    onSave({ ...formData, id: project?.id || Date.now() });
+                    onSave({
+                        ...formData,
+                        id: project?.id || Date.now(),
+                        userId: currentUser?.id,
+                        createdAt: project?.createdAt || new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    });
                 };
 
                 return (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-lg p-6 w-full max-w-md">
                             <h3 className="text-xl font-bold mb-4">
-                                {project ? 'Editar Projeto' : 'Novo Projeto'}
+                                {project ? 'Editar Projeto' : t('newProject')}
                             </h3>
                             <form onSubmit={handleSubmit}>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium mb-1">Nome do Projeto</label>
+                                        <label className="block text-sm font-medium mb-1">{t('projectName')}</label>
                                         <input
                                             type="text"
                                             className="w-full border rounded px-3 py-2"
@@ -1465,7 +805,7 @@
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-1">Descrição</label>
+                                        <label className="block text-sm font-medium mb-1">{t('description')}</label>
                                         <textarea
                                             className="w-full border rounded px-3 py-2"
                                             rows="3"
@@ -1475,7 +815,7 @@
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium mb-1">Data Início</label>
+                                            <label className="block text-sm font-medium mb-1">{t('startDate')}</label>
                                             <input
                                                 type="date"
                                                 className="w-full border rounded px-3 py-2"
@@ -1484,7 +824,7 @@
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium mb-1">Data Fim</label>
+                                            <label className="block text-sm font-medium mb-1">{t('endDate')}</label>
                                             <input
                                                 type="date"
                                                 className="w-full border rounded px-3 py-2"
@@ -1494,41 +834,27 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-1">Orçamento</label>
+                                        <label className="block text-sm font-medium mb-1">{t('budget')}</label>
                                         <input
                                             type="text"
                                             className="w-full border rounded px-3 py-2"
-                                            placeholder="Ex: R$ 100.000,00"
+                                            placeholder="R$ 0,00"
                                             value={formData.budget}
                                             onChange={(e) => setFormData({...formData, budget: e.target.value})}
                                         />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Status</label>
-                                            <select
-                                                className="w-full border rounded px-3 py-2"
-                                                value={formData.status}
-                                                onChange={(e) => setFormData({...formData, status: e.target.value})}
-                                            >
-                                                <option value="planning">Planejamento</option>
-                                                <option value="active">Ativo</option>
-                                                <option value="on-hold">Pausado</option>
-                                                <option value="completed">Concluído</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Metodologia</label>
-                                            <select
-                                                className="w-full border rounded px-3 py-2"
-                                                value={formData.methodology}
-                                                onChange={(e) => setFormData({...formData, methodology: e.target.value})}
-                                            >
-                                                <option value="waterfall">Cascata</option>
-                                                <option value="agile">Ágil</option>
-                                                <option value="hybrid">Híbrida</option>
-                                            </select>
-                                        </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">{t('status')}</label>
+                                        <select
+                                            className="w-full border rounded px-3 py-2"
+                                            value={formData.status}
+                                            onChange={(e) => setFormData({...formData, status: e.target.value})}
+                                        >
+                                            <option value="planning">{t('planning')}</option>
+                                            <option value="active">{t('active')}</option>
+                                            <option value="on-hold">{t('onHold')}</option>
+                                            <option value="completed">{t('completed')}</option>
+                                        </select>
                                     </div>
                                 </div>
                                 <div className="flex justify-end gap-2 mt-6">
@@ -1537,13 +863,13 @@
                                         onClick={onClose}
                                         className="px-4 py-2 border rounded hover:bg-gray-50"
                                     >
-                                        Cancelar
+                                        {t('cancel')}
                                     </button>
                                     <button
                                         type="submit"
                                         className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                                     >
-                                        Salvar
+                                        {t('save')}
                                     </button>
                                 </div>
                             </form>
@@ -1552,145 +878,234 @@
                 );
             };
 
-            // Renderizar conteúdo principal baseado na view ativa
-            const renderMainContent = () => {
-                if (!activeProject && activeView !== 'dashboard') {
-                    return (
-                        <div className="flex items-center justify-center h-full">
-                            <div className="text-center">
-                                <i data-lucide="folder-open" className="w-16 h-16 text-gray-300 mx-auto mb-4"></i>
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum projeto selecionado</h3>
-                                <p className="text-gray-500">Selecione um projeto para acessar este recurso</p>
+            // Layout Principal
+            const MainLayout = () => {
+                const handleLogout = () => {
+                    setCurrentUser(null);
+                    setIsLoggedIn(false);
+                    setShowLogin(true);
+                    localStorage.removeItem('pmbok_currentUser');
+                    addNotification('info', 'Logout', 'Você saiu do sistema');
+                };
+
+                const menuItems = [
+                    { id: 'dashboard', name: t('dashboard'), icon: 'layout-dashboard' },
+                    { id: 'projects', name: t('projects'), icon: 'folder' },
+                    { id: 'tasks', name: 'Tarefas', icon: 'check-square' },
+                    { id: 'risks', name: 'Riscos', icon: 'alert-triangle' },
+                    { id: 'stakeholders', name: 'Stakeholders', icon: 'users' },
+                    { id: 'reports', name: 'Relatórios', icon: 'file-text' },
+                    { id: 'settings', name: t('settings'), icon: 'settings' }
+                ];
+
+                return (
+                    <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+                        {/* Header */}
+                        <header className="bg-white shadow-sm border-b">
+                            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                                <div className="flex justify-between items-center h-16">
+                                    <div className="flex items-center">
+                                        <h1 className="text-xl font-bold">PMBOK 7 Manager Pro</h1>
+                                        <select
+                                            className="ml-4 border rounded px-2 py-1"
+                                            value={activeProject?.id || ''}
+                                            onChange={(e) => {
+                                                const project = projects.find(p => p.id === parseInt(e.target.value));
+                                                setActiveProject(project);
+                                            }}
+                                        >
+                                            <option value="">Selecione um projeto</option>
+                                            {projects
+                                                .filter(p => !currentUser || p.userId === currentUser.id)
+                                                .map(project => (
+                                                    <option key={project.id} value={project.id}>{project.name}</option>
+                                                ))}
+                                        </select>
+                                        <button
+                                            onClick={() => setShowModal('project')}
+                                            className="ml-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                                        >
+                                            <i data-lucide="plus" className="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <button
+                                            onClick={() => setDarkMode(!darkMode)}
+                                            className="p-2 rounded hover:bg-gray-100"
+                                        >
+                                            <i data-lucide={darkMode ? 'sun' : 'moon'} className="w-5 h-5"></i>
+                                        </button>
+                                        <button
+                                            onClick={() => setLanguage(language === 'pt' ? 'en' : 'pt')}
+                                            className="px-3 py-1 border rounded text-sm"
+                                        >
+                                            {language === 'pt' ? 'EN' : 'PT'}
+                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm">{currentUser?.name}</span>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                                            >
+                                                {t('logout')}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </header>
+
+                        <div className="flex">
+                            {/* Sidebar */}
+                            <div className="w-64 bg-white shadow-md h-screen">
+                                <nav className="p-4">
+                                    <ul className="space-y-2">
+                                        {menuItems.map(item => (
+                                            <li key={item.id}>
+                                                <button
+                                                    onClick={() => setActiveView(item.id)}
+                                                    className={`w-full text-left px-3 py-2 rounded flex items-center gap-3 ${
+                                                        activeView === item.id 
+                                                            ? 'bg-blue-50 text-blue-600' 
+                                                            : 'text-gray-700 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    <i data-lucide={item.icon} className="w-4 h-4"></i>
+                                                    {item.name}
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </nav>
+                            </div>
+
+                            {/* Main Content */}
+                            <div className="flex-1 p-6">
+                                {activeView === 'dashboard' && <Dashboard />}
+                                {activeView === 'projects' && (
+                                    <div className="bg-white rounded-lg shadow p-6">
+                                        <h2 className="text-2xl font-bold mb-4">{t('projects')}</h2>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {projects
+                                                .filter(p => !currentUser || p.userId === currentUser.id)
+                                                .map(project => (
+                                                    <div key={project.id} className="border rounded-lg p-4 hover:shadow-lg transition-shadow">
+                                                        <h3 className="font-semibold">{project.name}</h3>
+                                                        <p className="text-sm text-gray-600 mt-1">{project.description}</p>
+                                                        <div className="mt-3 flex justify-between items-center">
+                                                            <span className={`px-2 py-1 text-xs rounded ${
+                                                                project.status === 'active' ? 'bg-green-100 text-green-800' :
+                                                                project.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                                                                project.status === 'on-hold' ? 'bg-yellow-100 text-yellow-800' :
+                                                                'bg-gray-100 text-gray-800'
+                                                            }`}>
+                                                                {project.status}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => setActiveProject(project)}
+                                                                className="text-blue-500 hover:underline text-sm"
+                                                            >
+                                                                Abrir
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {activeView === 'settings' && (
+                                    <div className="bg-white rounded-lg shadow p-6">
+                                        <h2 className="text-2xl font-bold mb-4">{t('settings')}</h2>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <h3 className="font-semibold mb-2">Perfil do Usuário</h3>
+                                                <p>Nome: {currentUser?.name}</p>
+                                                <p>Email: {currentUser?.email}</p>
+                                                <p>Empresa: {currentUser?.company}</p>
+                                                <p>Cargo: {currentUser?.role}</p>
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold mb-2">Preferências</h3>
+                                                <label className="flex items-center gap-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={darkMode}
+                                                        onChange={(e) => setDarkMode(e.target.checked)}
+                                                    />
+                                                    Modo Escuro
+                                                </label>
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold mb-2">Idioma</h3>
+                                                <select
+                                                    value={language}
+                                                    onChange={(e) => setLanguage(e.target.value)}
+                                                    className="border rounded px-3 py-2"
+                                                >
+                                                    <option value="pt">Português</option>
+                                                    <option value="en">English</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                {activeView === 'tasks' && (
+                                    <div className="bg-white rounded-lg shadow p-6">
+                                        <h2 className="text-2xl font-bold mb-4">Tarefas</h2>
+                                        {/* Implementar lista de tarefas */}
+                                        <p className="text-gray-500">Sistema de tarefas em desenvolvimento...</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    );
-                }
 
-                switch(activeView) {
-                    case 'dashboard':
-                        return <Dashboard />;
-                    case 'charter':
-                        return <ProjectCharter />;
-                    case 'stakeholders':
-                        return <StakeholdersView />;
-                    case 'risks':
-                        return <RisksView />;
-                    default:
-                        return (
-                            <div className="bg-white rounded-lg shadow p-6">
-                                <h2 className="text-2xl font-bold text-gray-900 mb-4">{activeView}</h2>
-                                <p className="text-gray-500">Esta seção está em desenvolvimento...</p>
-                            </div>
-                        );
-                }
+                        {/* Modals */}
+                        {showModal === 'project' && (
+                            <ProjectModal
+                                project={editingItem}
+                                onSave={(project) => {
+                                    if (editingItem) {
+                                        setProjects(projects.map(p => p.id === project.id ? project : p));
+                                    } else {
+                                        setProjects([...projects, project]);
+                                        setActiveProject(project);
+                                    }
+                                    setShowModal(null);
+                                    setEditingItem(null);
+                                    addNotification('success', 'Sucesso', 'Projeto salvo com sucesso!');
+                                }}
+                                onClose={() => {
+                                    setShowModal(null);
+                                    setEditingItem(null);
+                                }}
+                            />
+                        )}
+                    </div>
+                );
             };
 
-            // Inicializar ícones Lucide
-            useEffect(() => {
-                lucide.createIcons();
-            });
+            // Renderização principal
+            if (showLogin && !isLoggedIn) {
+                return (
+                    <>
+                        <LoginSystem />
+                        <NotificationSystem />
+                    </>
+                );
+            }
 
             return (
-                <div className="min-h-screen bg-gray-50 flex">
-                    {/* Sidebar */}
-                    <div className="w-64 bg-white shadow-lg">
-                        <div className="p-4 border-b">
-                            <h1 className="text-xl font-bold text-gray-900">PMBOK 7 Manager</h1>
-                            <p className="text-xs text-gray-500 mt-1">Sistema de Gestão de Projetos</p>
-                        </div>
-
-                        {/* Seletor de Projeto */}
-                        <div className="p-4 border-b">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Projeto Ativo</label>
-                            <select
-                                className="w-full border rounded px-3 py-2 text-sm"
-                                value={activeProject?.id || ''}
-                                onChange={(e) => {
-                                    const project = projects.find(p => p.id === parseInt(e.target.value));
-                                    setActiveProject(project);
-                                }}
-                            >
-                                <option value="">Selecione um projeto</option>
-                                {projects.map(project => (
-                                    <option key={project.id} value={project.id}>{project.name}</option>
-                                ))}
-                            </select>
-                            <button
-                                onClick={() => setShowModal('project')}
-                                className="w-full mt-2 px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 flex items-center justify-center gap-2"
-                            >
-                                <i data-lucide="plus" className="w-4 h-4"></i>
-                                Novo Projeto
-                            </button>
-                        </div>
-
-                        {/* Menu de Navegação */}
-                        <nav className="p-4">
-                            <ul className="space-y-1">
-                                {menuItems.map(item => (
-                                    <li key={item.id}>
-                                        <button
-                                            onClick={() => setActiveView(item.id)}
-                                            className={`w-full text-left px-3 py-2 rounded flex items-center gap-3 text-sm transition-colors ${
-                                                activeView === item.id 
-                                                    ? 'bg-blue-50 text-blue-600' 
-                                                    : 'text-gray-700 hover:bg-gray-50'
-                                            }`}
-                                        >
-                                            <i data-lucide={item.icon} className="w-4 h-4"></i>
-                                            {item.name}
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        </nav>
-
-                        {/* Info PMBOK */}
-                        <div className="p-4 border-t">
-                            <div className="text-xs text-gray-500">
-                                <p className="font-semibold mb-1">PMBOK® Guide</p>
-                                <p>7ª Edição</p>
-                                <p className="mt-2">12 Princípios</p>
-                                <p>8 Domínios de Desempenho</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Conteúdo Principal */}
-                    <div className="flex-1 p-6 overflow-auto">
-                        {renderMainContent()}
-                    </div>
-
-                    {/* Modal de Projeto */}
-                    {showModal === 'project' && (
-                        <ProjectModal
-                            project={editingItem}
-                            onSave={(project) => {
-                                if (editingItem) {
-                                    setProjects(projects.map(p => 
-                                        p.id === project.id ? project : p
-                                    ));
-                                } else {
-                                    setProjects([...projects, project]);
-                                    setActiveProject(project);
-                                }
-                                setShowModal(null);
-                                setEditingItem(null);
-                            }}
-                            onClose={() => {
-                                setShowModal(null);
-                                setEditingItem(null);
-                            }}
-                        />
-                    )}
-                </div>
+                <>
+                    <MainLayout />
+                    <NotificationSystem />
+                </>
             );
         };
 
         // Renderizar aplicação
-        ReactDOM.createRoot(document.getElementById('root')).render(<PMBOKProjectManager />);
+        ReactDOM.createRoot(document.getElementById('root')).render(<PMBOKManagerPro />);
         
-        // Atualizar ícones
+        // Inicializar ícones
         setTimeout(() => {
             lucide.createIcons();
         }, 100);
