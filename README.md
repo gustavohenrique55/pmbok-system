@@ -35,6 +35,23 @@ O **PMBOK 7 Manager Pro** é um sistema web completo para gestão de projetos se
 ✅ **Modo Escuro** - Interface adaptável
 ✅ **100% Offline** - Armazenamento local com LocalStorage
 
+## 📊 Status ISO 9000/9001
+
+**Conformidade Atual:** 🟡 **70% Parcialmente Conforme**
+
+- ✅ Sistema **100% funcional** para gestão de projetos
+- ✅ Adequado para pequenas e médias empresas
+- ✅ Não requer certificação ISO para uso
+- ⚠️ Para certificação ISO 9001: requer módulos adicionais (ver `ISO-9001-COMPLIANCE.md`)
+
+**Módulos ISO Implementados:**
+- ✅ Política da Qualidade (ISO 5.2)
+- ✅ Não Conformidades e Ações Corretivas (ISO 8.7, 10.2)
+
+**Documentação ISO:**
+- 📋 `ISO-9001-COMPLIANCE.md` - Análise detalhada de conformidade
+- 📋 `ISO-CHECKLIST.md` - Checklist rápido e recomendações
+
 ## 🌟 Funcionalidades
 
 ### 🔐 Sistema de Autenticação
@@ -243,22 +260,34 @@ pmbok-system/
 | Multi-idioma | ✅ | PT-BR e EN |
 | Modo Escuro | ✅ | Toggle claro/escuro |
 | LocalStorage | ✅ | Persistência de dados |
+| **Política da Qualidade** | ✅ | ISO 5.2 - Gestão da política |
+| **Não Conformidades** | ✅ | ISO 8.7, 10.2 - Controle de NCs |
 
-### 🚧 Roadmap Futuro
+### 🚧 Roadmap Futuro (Opcional)
 
+**Módulos PMBOK:**
 - [ ] WBS (Work Breakdown Structure)
-- [ ] Controle de Mudanças
 - [ ] Lições Aprendidas
 - [ ] Gestão de Entregas (Deliverables)
-- [ ] Métricas de Qualidade
 - [ ] Gestão de Comunicações
-- [ ] Gestão de Recursos
+- [ ] Gestão de Recursos Completa
 - [ ] Project Charter
 - [ ] Timeline/Gantt Chart
+
+**Módulos ISO 9001 (para certificação):**
+- [ ] Objetivos da Qualidade (ISO 6.2)
+- [ ] Controle de Mudanças (ISO 6.3)
+- [ ] Gestão de Fornecedores (ISO 8.4)
+- [ ] Auditorias Internas (ISO 9.2)
+- [ ] Análise Crítica pela Direção (ISO 9.3)
+- [ ] Gestão de Competências (ISO 7.2)
+
+**Melhorias Gerais:**
 - [ ] Integração real com Google Calendar
 - [ ] Backup/Restore de dados
 - [ ] Exportação Excel
 - [ ] Temas personalizados
+- [ ] Autenticação avançada (OAuth)
 
 ## 🎯 Casos de Uso
 
