@@ -1358,6 +1358,248 @@
                 );
             };
 
+            // Módulo ISO: Não Conformidades e Ações Corretivas (8.7, 10.2)
+            const NonConformitiesModule = () => {
+                const [nonConformities, setNonConformities] = useState([]);
+                const [showNCModal, setShowNCModal] = useState(false);
+                const [ncForm, setNcForm] = useState({ title: '', description: '', source: 'internal', severity: 'minor', responsable: '', rootCause: '', correctiveAction: '', preventiveAction: '', deadline: '' });
+
+                useEffect(() => {
+                    const saved = localStorage.getItem('pmbok_nonconformities');
+                    if (saved) setNonConformities(JSON.parse(saved));
+                }, []);
+
+                useEffect(() => {
+                    localStorage.setItem('pmbok_nonconformities', JSON.stringify(nonConformities));
+                }, [nonConformities]);
+
+                const addNC = () => {
+                    const newNC = { ...ncForm, id: Date.now(), projectId: activeProject?.id, status: 'open', createdAt: new Date().toISOString() };
+                    setNonConformities([...nonConformities, newNC]);
+                    setShowNCModal(false);
+                    setNcForm({ title: '', description: '', source: 'internal', severity: 'minor', responsable: '', rootCause: '', correctiveAction: '', preventiveAction: '', deadline: '' });
+                    addNotification('warning', 'NC Registrada', 'Não conformidade registrada com sucesso');
+                };
+
+                const updateNCStatus = (id, newStatus) => {
+                    setNonConformities(nonConformities.map(nc => nc.id === id ? { ...nc, status: newStatus, closedAt: new Date().toISOString() } : nc));
+                    addNotification('success', 'NC Atualizada', `Status alterado para ${newStatus}`);
+                };
+
+                const projectNCs = nonConformities.filter(nc => nc.projectId === activeProject?.id);
+                const openNCs = projectNCs.filter(nc => nc.status === 'open');
+                const closedNCs = projectNCs.filter(nc => nc.status === 'closed');
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Não Conformidades (ISO 8.7, 10.2)</h2>
+                                <p className="text-sm text-gray-600">Controle de não conformidades e ações corretivas</p>
+                            </div>
+                            <button onClick={() => setShowNCModal(true)} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2">
+                                <i data-lucide="alert-octagon" className="w-4 h-4"></i> Registrar NC
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div className="card bg-red-50">
+                                <h3 className="text-sm font-medium text-red-700">NCs Abertas</h3>
+                                <p className="text-3xl font-bold text-red-900">{openNCs.length}</p>
+                            </div>
+                            <div className="card bg-green-50">
+                                <h3 className="text-sm font-medium text-green-700">NCs Fechadas</h3>
+                                <p className="text-3xl font-bold text-green-900">{closedNCs.length}</p>
+                            </div>
+                            <div className="card bg-blue-50">
+                                <h3 className="text-sm font-medium text-blue-700">Total</h3>
+                                <p className="text-3xl font-bold text-blue-900">{projectNCs.length}</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <h3 className="text-lg font-semibold mb-4">Registro de Não Conformidades</h3>
+                            <div className="space-y-4">
+                                {projectNCs.length === 0 ? (
+                                    <p className="text-gray-500 text-center py-8">Nenhuma não conformidade registrada</p>
+                                ) : (
+                                    projectNCs.map(nc => (
+                                        <div key={nc.id} className={`border-l-4 p-4 rounded ${nc.status === 'open' ? 'border-red-500 bg-red-50' : 'border-green-500 bg-green-50'}`}>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <h4 className="font-semibold text-lg">{nc.title}</h4>
+                                                    <p className="text-sm text-gray-600">{nc.description}</p>
+                                                </div>
+                                                <span className={`badge ${nc.severity === 'critical' ? 'badge-danger' : nc.severity === 'major' ? 'badge-warning' : 'badge-info'}`}>
+                                                    {nc.severity}
+                                                </span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
+                                                <div><strong>Fonte:</strong> {nc.source}</div>
+                                                <div><strong>Responsável:</strong> {nc.responsable}</div>
+                                                <div><strong>Prazo:</strong> {nc.deadline ? new Date(nc.deadline).toLocaleDateString('pt-BR') : 'N/A'}</div>
+                                                <div><strong>Status:</strong> <span className={`badge ${nc.status === 'open' ? 'badge-danger' : 'badge-success'}`}>{nc.status}</span></div>
+                                            </div>
+                                            {nc.rootCause && (
+                                                <div className="mt-3 p-3 bg-white rounded">
+                                                    <strong className="text-sm">Causa Raiz:</strong>
+                                                    <p className="text-sm text-gray-700">{nc.rootCause}</p>
+                                                </div>
+                                            )}
+                                            {nc.correctiveAction && (
+                                                <div className="mt-2 p-3 bg-white rounded">
+                                                    <strong className="text-sm">Ação Corretiva:</strong>
+                                                    <p className="text-sm text-gray-700">{nc.correctiveAction}</p>
+                                                </div>
+                                            )}
+                                            {nc.status === 'open' && (
+                                                <button onClick={() => updateNCStatus(nc.id, 'closed')} className="mt-3 px-4 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600">
+                                                    Fechar NC
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {showNCModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                                <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-screen overflow-y-auto">
+                                    <h3 className="text-xl font-bold mb-4">Registrar Não Conformidade</h3>
+                                    <div className="space-y-4">
+                                        <input type="text" placeholder="Título da NC" className="w-full border rounded px-3 py-2" value={ncForm.title} onChange={(e) => setNcForm({ ...ncForm, title: e.target.value })} />
+                                        <textarea placeholder="Descrição detalhada" className="w-full border rounded px-3 py-2" rows="3" value={ncForm.description} onChange={(e) => setNcForm({ ...ncForm, description: e.target.value })} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">Fonte</label>
+                                                <select className="w-full border rounded px-3 py-2" value={ncForm.source} onChange={(e) => setNcForm({ ...ncForm, source: e.target.value })}>
+                                                    <option value="internal">Auditoria Interna</option>
+                                                    <option value="external">Auditoria Externa</option>
+                                                    <option value="customer">Reclamação Cliente</option>
+                                                    <option value="process">Processo</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">Severidade</label>
+                                                <select className="w-full border rounded px-3 py-2" value={ncForm.severity} onChange={(e) => setNcForm({ ...ncForm, severity: e.target.value })}>
+                                                    <option value="minor">Menor</option>
+                                                    <option value="major">Maior</option>
+                                                    <option value="critical">Crítica</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <input type="text" placeholder="Responsável" className="w-full border rounded px-3 py-2" value={ncForm.responsable} onChange={(e) => setNcForm({ ...ncForm, responsable: e.target.value })} />
+                                        <textarea placeholder="Análise de Causa Raiz (5 Porquês, Ishikawa)" className="w-full border rounded px-3 py-2" rows="2" value={ncForm.rootCause} onChange={(e) => setNcForm({ ...ncForm, rootCause: e.target.value })} />
+                                        <textarea placeholder="Ação Corretiva" className="w-full border rounded px-3 py-2" rows="2" value={ncForm.correctiveAction} onChange={(e) => setNcForm({ ...ncForm, correctiveAction: e.target.value })} />
+                                        <textarea placeholder="Ação Preventiva" className="w-full border rounded px-3 py-2" rows="2" value={ncForm.preventiveAction} onChange={(e) => setNcForm({ ...ncForm, preventiveAction: e.target.value })} />
+                                        <input type="date" className="w-full border rounded px-3 py-2" value={ncForm.deadline} onChange={(e) => setNcForm({ ...ncForm, deadline: e.target.value })} />
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button onClick={() => setShowNCModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
+                                        <button onClick={addNC} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Registrar NC</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Módulo ISO: Política da Qualidade (5.2)
+            const QualityPolicyModule = () => {
+                const [policy, setPolicy] = useState({ text: '', approvedBy: '', approvedDate: '', version: '1.0', commitments: [] });
+                const [isEditing, setIsEditing] = useState(false);
+
+                useEffect(() => {
+                    const saved = localStorage.getItem('pmbok_quality_policy');
+                    if (saved) setPolicy(JSON.parse(saved));
+                }, []);
+
+                useEffect(() => {
+                    localStorage.setItem('pmbok_quality_policy', JSON.stringify(policy));
+                }, [policy]);
+
+                const savePolicy = () => {
+                    setPolicy({ ...policy, approvedDate: new Date().toISOString() });
+                    setIsEditing(false);
+                    addNotification('success', 'Política Salva', 'Política da Qualidade atualizada com sucesso');
+                };
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Política da Qualidade (ISO 5.2)</h2>
+                                <p className="text-sm text-gray-600">Definição e comunicação da política da qualidade</p>
+                            </div>
+                            <button onClick={() => setIsEditing(!isEditing)} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2">
+                                <i data-lucide={isEditing ? 'x' : 'edit'} className="w-4 h-4"></i>
+                                {isEditing ? 'Cancelar' : 'Editar'}
+                            </button>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow p-6">
+                            {isEditing ? (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Política da Qualidade</label>
+                                        <textarea className="w-full border rounded px-3 py-2" rows="10" value={policy.text} onChange={(e) => setPolicy({ ...policy, text: e.target.value })} placeholder="Digite a política da qualidade da organização...&#10;&#10;Exemplo:&#10;'Nossa organização está comprometida em:&#10;- Satisfazer os requisitos dos clientes&#10;- Melhoria contínua dos processos&#10;- Conformidade com requisitos aplicáveis&#10;- Desenvolvimento de competências da equipe'" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Aprovado por</label>
+                                            <input type="text" className="w-full border rounded px-3 py-2" value={policy.approvedBy} onChange={(e) => setPolicy({ ...policy, approvedBy: e.target.value })} placeholder="Nome do Diretor/CEO" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Versão</label>
+                                            <input type="text" className="w-full border rounded px-3 py-2" value={policy.version} onChange={(e) => setPolicy({ ...policy, version: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <button onClick={savePolicy} className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600">Salvar Política</button>
+                                </div>
+                            ) : (
+                                <div>
+                                    {policy.text ? (
+                                        <div>
+                                            <div className="prose max-w-none">
+                                                <div className="whitespace-pre-wrap border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded">{policy.text}</div>
+                                            </div>
+                                            <div className="mt-6 pt-6 border-t">
+                                                <div className="grid grid-cols-3 gap-4 text-sm">
+                                                    <div><strong>Aprovado por:</strong> {policy.approvedBy || 'Não definido'}</div>
+                                                    <div><strong>Data:</strong> {policy.approvedDate ? new Date(policy.approvedDate).toLocaleDateString('pt-BR') : 'Não aprovado'}</div>
+                                                    <div><strong>Versão:</strong> {policy.version}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-12 text-gray-500">
+                                            <i data-lucide="file-text" className="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                                            <p>Nenhuma política da qualidade definida</p>
+                                            <button onClick={() => setIsEditing(true)} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Criar Política</button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                            <h4 className="font-semibold mb-2">Requisitos ISO 9001:2015 - Cláusula 5.2</h4>
+                            <ul className="text-sm space-y-1 text-gray-700">
+                                <li>✓ Apropriada ao propósito e contexto da organização</li>
+                                <li>✓ Provê estrutura para estabelecer objetivos da qualidade</li>
+                                <li>✓ Inclui compromisso em satisfazer requisitos aplicáveis</li>
+                                <li>✓ Inclui compromisso com melhoria contínua do SGQ</li>
+                                <li>✓ Disponível como informação documentada</li>
+                                <li>✓ Comunicada, compreendida e aplicada na organização</li>
+                                <li>✓ Disponível para partes interessadas relevantes</li>
+                            </ul>
+                        </div>
+                    </div>
+                );
+            };
+
             // Layout Principal
             const MainLayout = () => {
                 const handleLogout = () => {
@@ -1375,6 +1617,9 @@
                     { id: 'risks', name: 'Riscos', icon: 'alert-triangle' },
                     { id: 'stakeholders', name: 'Stakeholders', icon: 'users' },
                     { id: 'reports', name: 'Relatórios', icon: 'file-text' },
+                    { id: 'divider1', name: '─── ISO 9001 ───', icon: null, disabled: true },
+                    { id: 'quality-policy', name: 'Política Qualidade', icon: 'shield-check' },
+                    { id: 'non-conformities', name: 'Não Conformidades', icon: 'alert-octagon' },
                     { id: 'settings', name: t('settings'), icon: 'settings' }
                 ];
 
@@ -1442,17 +1687,23 @@
                                     <ul className="space-y-2">
                                         {menuItems.map(item => (
                                             <li key={item.id}>
-                                                <button
-                                                    onClick={() => setActiveView(item.id)}
-                                                    className={`w-full text-left px-3 py-2 rounded flex items-center gap-3 ${
-                                                        activeView === item.id 
-                                                            ? 'bg-blue-50 text-blue-600' 
-                                                            : 'text-gray-700 hover:bg-gray-50'
-                                                    }`}
-                                                >
-                                                    <i data-lucide={item.icon} className="w-4 h-4"></i>
-                                                    {item.name}
-                                                </button>
+                                                {item.disabled ? (
+                                                    <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                                        {item.name}
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => setActiveView(item.id)}
+                                                        className={`w-full text-left px-3 py-2 rounded flex items-center gap-3 ${
+                                                            activeView === item.id
+                                                                ? 'bg-blue-50 text-blue-600'
+                                                                : 'text-gray-700 hover:bg-gray-50'
+                                                        }`}
+                                                    >
+                                                        {item.icon && <i data-lucide={item.icon} className="w-4 h-4"></i>}
+                                                        {item.name}
+                                                    </button>
+                                                )}
                                             </li>
                                         ))}
                                     </ul>
@@ -1533,6 +1784,8 @@
                                 {activeView === 'risks' && <RisksManager />}
                                 {activeView === 'stakeholders' && <StakeholdersManager />}
                                 {activeView === 'reports' && <ReportsModule />}
+                                {activeView === 'quality-policy' && <QualityPolicyModule />}
+                                {activeView === 'non-conformities' && <NonConformitiesModule />}
                             </div>
                         </div>
 
