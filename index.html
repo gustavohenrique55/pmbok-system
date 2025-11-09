@@ -254,7 +254,7 @@
                     return null;
                 }
 
-                const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+                const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
 
                 try {
                     const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
