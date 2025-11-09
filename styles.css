@@ -1,0 +1,372 @@
+/* PMBOK Manager Pro - Estilos Customizados */
+
+:root {
+    --primary-color: #3b82f6;
+    --secondary-color: #8b5cf6;
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --info-color: #06b6d4;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Animações */
+.notification-enter {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid var(--primary-color);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Kanban Board */
+.kanban-column {
+    background: #f7fafc;
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 500px;
+}
+
+.kanban-card {
+    background: white;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    cursor: move;
+    transition: all 0.2s;
+}
+
+.kanban-card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.kanban-card.dragging {
+    opacity: 0.5;
+}
+
+/* Timeline / Gantt */
+.timeline-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.timeline-bar {
+    height: 24px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    border-radius: 4px;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.timeline-bar:hover {
+    transform: scaleY(1.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Risk Matrix */
+.risk-matrix {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    max-width: 500px;
+}
+
+.risk-cell {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.risk-cell:hover {
+    transform: scale(1.05);
+}
+
+.risk-low {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.risk-medium {
+    background-color: #fed7aa;
+    color: #92400e;
+}
+
+.risk-high {
+    background-color: #fecaca;
+    color: #991b1b;
+}
+
+.risk-critical {
+    background-color: #dc2626;
+    color: white;
+}
+
+/* Stakeholder Power/Interest Matrix */
+.stakeholder-matrix {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 8px;
+    height: 400px;
+}
+
+.matrix-quadrant {
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    position: relative;
+    overflow-y: auto;
+}
+
+.quadrant-label {
+    font-weight: bold;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.stakeholder-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    margin: 4px;
+    border-radius: 12px;
+    font-size: 12px;
+    background: white;
+    border: 1px solid #d1d5db;
+    cursor: pointer;
+}
+
+/* WBS Tree */
+.wbs-tree {
+    padding-left: 24px;
+}
+
+.wbs-node {
+    margin: 8px 0;
+    padding: 8px;
+    border-left: 2px solid var(--primary-color);
+    background: #f9fafb;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wbs-node:hover {
+    background: #f3f4f6;
+    border-left-width: 4px;
+}
+
+.wbs-children {
+    margin-left: 16px;
+}
+
+/* Cards e Badges */
+.card {
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+}
+
+.card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-warning {
+    background: #fed7aa;
+    color: #92400e;
+}
+
+.badge-danger {
+    background: #fecaca;
+    color: #991b1b;
+}
+
+.badge-info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+/* Impressão */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    .print-break {
+        page-break-after: always;
+    }
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Modo Escuro */
+.dark {
+    background: #1f2937;
+    color: #f9fafb;
+}
+
+.dark .card,
+.dark .kanban-column,
+.dark .wbs-node {
+    background: #374151;
+    color: #f9fafb;
+}
+
+.dark .matrix-quadrant {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .stakeholder-matrix {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+
+    .risk-matrix {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Tooltips */
+.tooltip {
+    position: relative;
+}
+
+.tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background: #1f2937;
+    color: white;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+}
+
+/* Progress Bar */
+.progress-bar {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    transition: width 0.3s ease;
+}
+
+/* Chart Container */
+.chart-container {
+    position: relative;
+    height: 100%;
+    width: 100%;
+}
