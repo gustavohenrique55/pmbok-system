@@ -1,4 +1,4 @@
-# 🚀 PMBOK 7 Manager Pro
+# 🚀 Project Mnagement 7 PRO
 
 Sistema Completo e Profissional de Gestão de Projetos baseado no PMBOK 7
 
