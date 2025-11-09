@@ -49,6 +49,12 @@
             const [resources, setResources] = useState([]);
             const [tasks, setTasks] = useState([]);
 
+            // Estados para IA (Gemini)
+            const [geminiApiKey, setGeminiApiKey] = useState('');
+            const [aiChatHistory, setAiChatHistory] = useState([]);
+            const [showAiChat, setShowAiChat] = useState(false);
+            const [aiLoading, setAiLoading] = useState(false);
+
             // Traduções
             const translations = {
                 pt: {
@@ -130,7 +136,10 @@
                         
                         const savedTasks = localStorage.getItem('pmbok_tasks');
                         if (savedTasks) setTasks(JSON.parse(savedTasks));
-                        
+
+                        const savedGeminiKey = localStorage.getItem('pmbok_gemini_key');
+                        if (savedGeminiKey) setGeminiApiKey(savedGeminiKey);
+
                         // Check for logged in user
                         const loggedUser = localStorage.getItem('pmbok_currentUser');
                         if (loggedUser) {
@@ -179,6 +188,12 @@
             useEffect(() => {
                 localStorage.setItem('pmbok_language', language);
             }, [language]);
+
+            useEffect(() => {
+                if (geminiApiKey) {
+                    localStorage.setItem('pmbok_gemini_key', geminiApiKey);
+                }
+            }, [geminiApiKey]);
 
             // Sistema de Notificações
             const addNotification = (type, title, message) => {
@@ -231,6 +246,149 @@
                     return () => clearInterval(interval);
                 }
             }, [isLoggedIn, tasks]);
+
+            // Funções de IA (Gemini API)
+            const callGeminiAPI = async (prompt, systemPrompt = '') => {
+                if (!geminiApiKey) {
+                    addNotification('error', 'API Key Ausente', 'Configure sua chave API do Gemini nas configurações.');
+                    return null;
+                }
+
+                const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+
+                try {
+                    const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{
+                                    text: fullPrompt
+                                }]
+                            }]
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error?.message || 'Erro na API do Gemini');
+                    }
+
+                    const data = await response.json();
+                    return data.candidates[0].content.parts[0].text;
+                } catch (error) {
+                    console.error('Erro ao chamar Gemini API:', error);
+                    addNotification('error', 'Erro de IA', error.message || 'Falha ao comunicar com a IA');
+                    return null;
+                }
+            };
+
+            const analyzeRiskWithAI = async (riskDescription) => {
+                const prompt = `Você é um especialista em gestão de riscos PMBOK 7.
+Analise o seguinte risco e forneça:
+1. Probabilidade estimada (1-5, onde 5 é muito provável)
+2. Impacto estimado (1-5, onde 5 é impacto crítico)
+3. Categoria sugerida (Técnico, Financeiro, Operacional, ou Externo)
+4. Plano de mitigação sugerido (2-3 ações práticas)
+
+Risco: ${riskDescription}
+
+Responda em formato JSON:
+{
+  "probabilidade": número,
+  "impacto": número,
+  "categoria": "string",
+  "mitigacao": "string com ações"
+}`;
+
+                setAiLoading(true);
+                const result = await callGeminiAPI(prompt);
+                setAiLoading(false);
+
+                if (result) {
+                    try {
+                        // Extract JSON from response
+                        const jsonMatch = result.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) {
+                            return JSON.parse(jsonMatch[0]);
+                        }
+                    } catch (e) {
+                        console.error('Erro ao parsear resposta da IA:', e);
+                    }
+                }
+                return null;
+            };
+
+            const generateQualityPolicyWithAI = async (companyName, projectType) => {
+                const prompt = `Você é um consultor ISO 9001. Crie uma Política da Qualidade profissional para:
+Empresa: ${companyName || 'Organização'}
+Tipo de projeto: ${projectType || 'Gestão de Projetos'}
+
+A política deve:
+- Ter 3-5 parágrafos
+- Seguir ISO 9001:2015
+- Mencionar: compromisso com qualidade, melhoria contínua, satisfação do cliente
+- Ser formal e profissional
+- Incluir comprometimento da alta direção
+
+Gere apenas o texto da política, sem títulos ou formatação extra.`;
+
+                setAiLoading(true);
+                const result = await callGeminiAPI(prompt);
+                setAiLoading(false);
+                return result;
+            };
+
+            const analyzeNonConformityWithAI = async (ncDescription) => {
+                const prompt = `Você é um auditor ISO 9001. Analise esta Não Conformidade:
+
+${ncDescription}
+
+Forneça:
+1. Gravidade estimada (Baixa, Média, Alta, Crítica)
+2. Possíveis causas raiz (método 5 Porquês)
+3. Ações corretivas sugeridas (2-3 ações)
+4. Ações preventivas sugeridas (2-3 ações)
+
+Responda em formato JSON:
+{
+  "gravidade": "string",
+  "causasRaiz": "string",
+  "acoesCorretivas": "string",
+  "acoesPreventivas": "string"
+}`;
+
+                setAiLoading(true);
+                const result = await callGeminiAPI(prompt);
+                setAiLoading(false);
+
+                if (result) {
+                    try {
+                        const jsonMatch = result.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) {
+                            return JSON.parse(jsonMatch[0]);
+                        }
+                    } catch (e) {
+                        console.error('Erro ao parsear resposta da IA:', e);
+                    }
+                }
+                return null;
+            };
+
+            const chatWithAI = async (userMessage) => {
+                const systemPrompt = `Você é um assistente especializado em PMBOK 7 e ISO 9001.
+Ajude o usuário com perguntas sobre gestão de projetos, qualidade, riscos, stakeholders, etc.
+Seja conciso, prático e profissional.`;
+
+                setAiLoading(true);
+                const result = await callGeminiAPI(userMessage, systemPrompt);
+                setAiLoading(false);
+                return result;
+            };
 
             // Componente de Login/Registro
             const LoginSystem = () => {
@@ -1087,7 +1245,43 @@
                                 <div className="bg-white rounded-lg p-6 w-full max-w-md">
                                     <h3 className="text-xl font-bold mb-4">Registrar Novo Risco</h3>
                                     <div className="space-y-4">
-                                        <textarea placeholder="Descrição do risco" className="w-full border rounded px-3 py-2" rows="3" value={riskForm.description} onChange={(e) => setRiskForm({ ...riskForm, description: e.target.value })} />
+                                        <div>
+                                            <textarea placeholder="Descrição do risco" className="w-full border rounded px-3 py-2" rows="3" value={riskForm.description} onChange={(e) => setRiskForm({ ...riskForm, description: e.target.value })} />
+                                            {geminiApiKey && riskForm.description.length > 20 && (
+                                                <button
+                                                    onClick={async () => {
+                                                        const analysis = await analyzeRiskWithAI(riskForm.description);
+                                                        if (analysis) {
+                                                            setRiskForm({
+                                                                ...riskForm,
+                                                                probability: analysis.probabilidade || riskForm.probability,
+                                                                impact: analysis.impacto || riskForm.impact,
+                                                                category: analysis.categoria?.toLowerCase() === 'técnico' ? 'technical' :
+                                                                         analysis.categoria?.toLowerCase() === 'financeiro' ? 'financial' :
+                                                                         analysis.categoria?.toLowerCase() === 'operacional' ? 'operational' :
+                                                                         analysis.categoria?.toLowerCase() === 'externo' ? 'external' : riskForm.category,
+                                                                mitigation: analysis.mitigacao || riskForm.mitigation
+                                                            });
+                                                            addNotification('success', 'IA Análise Completa', 'Campos preenchidos com sugestões da IA');
+                                                        }
+                                                    }}
+                                                    disabled={aiLoading}
+                                                    className="mt-2 w-full px-3 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                                                >
+                                                    {aiLoading ? (
+                                                        <>
+                                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                            Analisando...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <i data-lucide="sparkles" className="w-4 h-4"></i>
+                                                            Analisar Risco com IA
+                                                        </>
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-sm font-medium mb-1">Probabilidade (1-5)</label>
@@ -1358,6 +1552,593 @@
                 );
             };
 
+            // Módulo ISO: Não Conformidades e Ações Corretivas (8.7, 10.2)
+            const NonConformitiesModule = () => {
+                const [nonConformities, setNonConformities] = useState([]);
+                const [showNCModal, setShowNCModal] = useState(false);
+                const [ncForm, setNcForm] = useState({ title: '', description: '', source: 'internal', severity: 'minor', responsable: '', rootCause: '', correctiveAction: '', preventiveAction: '', deadline: '' });
+
+                useEffect(() => {
+                    const saved = localStorage.getItem('pmbok_nonconformities');
+                    if (saved) setNonConformities(JSON.parse(saved));
+                }, []);
+
+                useEffect(() => {
+                    localStorage.setItem('pmbok_nonconformities', JSON.stringify(nonConformities));
+                }, [nonConformities]);
+
+                const addNC = () => {
+                    const newNC = { ...ncForm, id: Date.now(), projectId: activeProject?.id, status: 'open', createdAt: new Date().toISOString() };
+                    setNonConformities([...nonConformities, newNC]);
+                    setShowNCModal(false);
+                    setNcForm({ title: '', description: '', source: 'internal', severity: 'minor', responsable: '', rootCause: '', correctiveAction: '', preventiveAction: '', deadline: '' });
+                    addNotification('warning', 'NC Registrada', 'Não conformidade registrada com sucesso');
+                };
+
+                const updateNCStatus = (id, newStatus) => {
+                    setNonConformities(nonConformities.map(nc => nc.id === id ? { ...nc, status: newStatus, closedAt: new Date().toISOString() } : nc));
+                    addNotification('success', 'NC Atualizada', `Status alterado para ${newStatus}`);
+                };
+
+                const projectNCs = nonConformities.filter(nc => nc.projectId === activeProject?.id);
+                const openNCs = projectNCs.filter(nc => nc.status === 'open');
+                const closedNCs = projectNCs.filter(nc => nc.status === 'closed');
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Não Conformidades (ISO 8.7, 10.2)</h2>
+                                <p className="text-sm text-gray-600">Controle de não conformidades e ações corretivas</p>
+                            </div>
+                            <button onClick={() => setShowNCModal(true)} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2">
+                                <i data-lucide="alert-octagon" className="w-4 h-4"></i> Registrar NC
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div className="card bg-red-50">
+                                <h3 className="text-sm font-medium text-red-700">NCs Abertas</h3>
+                                <p className="text-3xl font-bold text-red-900">{openNCs.length}</p>
+                            </div>
+                            <div className="card bg-green-50">
+                                <h3 className="text-sm font-medium text-green-700">NCs Fechadas</h3>
+                                <p className="text-3xl font-bold text-green-900">{closedNCs.length}</p>
+                            </div>
+                            <div className="card bg-blue-50">
+                                <h3 className="text-sm font-medium text-blue-700">Total</h3>
+                                <p className="text-3xl font-bold text-blue-900">{projectNCs.length}</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <h3 className="text-lg font-semibold mb-4">Registro de Não Conformidades</h3>
+                            <div className="space-y-4">
+                                {projectNCs.length === 0 ? (
+                                    <p className="text-gray-500 text-center py-8">Nenhuma não conformidade registrada</p>
+                                ) : (
+                                    projectNCs.map(nc => (
+                                        <div key={nc.id} className={`border-l-4 p-4 rounded ${nc.status === 'open' ? 'border-red-500 bg-red-50' : 'border-green-500 bg-green-50'}`}>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <h4 className="font-semibold text-lg">{nc.title}</h4>
+                                                    <p className="text-sm text-gray-600">{nc.description}</p>
+                                                </div>
+                                                <span className={`badge ${nc.severity === 'critical' ? 'badge-danger' : nc.severity === 'major' ? 'badge-warning' : 'badge-info'}`}>
+                                                    {nc.severity}
+                                                </span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4 mt-3 text-sm">
+                                                <div><strong>Fonte:</strong> {nc.source}</div>
+                                                <div><strong>Responsável:</strong> {nc.responsable}</div>
+                                                <div><strong>Prazo:</strong> {nc.deadline ? new Date(nc.deadline).toLocaleDateString('pt-BR') : 'N/A'}</div>
+                                                <div><strong>Status:</strong> <span className={`badge ${nc.status === 'open' ? 'badge-danger' : 'badge-success'}`}>{nc.status}</span></div>
+                                            </div>
+                                            {nc.rootCause && (
+                                                <div className="mt-3 p-3 bg-white rounded">
+                                                    <strong className="text-sm">Causa Raiz:</strong>
+                                                    <p className="text-sm text-gray-700">{nc.rootCause}</p>
+                                                </div>
+                                            )}
+                                            {nc.correctiveAction && (
+                                                <div className="mt-2 p-3 bg-white rounded">
+                                                    <strong className="text-sm">Ação Corretiva:</strong>
+                                                    <p className="text-sm text-gray-700">{nc.correctiveAction}</p>
+                                                </div>
+                                            )}
+                                            {nc.status === 'open' && (
+                                                <button onClick={() => updateNCStatus(nc.id, 'closed')} className="mt-3 px-4 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600">
+                                                    Fechar NC
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {showNCModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                                <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-screen overflow-y-auto">
+                                    <h3 className="text-xl font-bold mb-4">Registrar Não Conformidade</h3>
+                                    <div className="space-y-4">
+                                        <input type="text" placeholder="Título da NC" className="w-full border rounded px-3 py-2" value={ncForm.title} onChange={(e) => setNcForm({ ...ncForm, title: e.target.value })} />
+                                        <div>
+                                            <textarea placeholder="Descrição detalhada" className="w-full border rounded px-3 py-2" rows="3" value={ncForm.description} onChange={(e) => setNcForm({ ...ncForm, description: e.target.value })} />
+                                            {geminiApiKey && ncForm.description.length > 20 && (
+                                                <button
+                                                    onClick={async () => {
+                                                        const analysis = await analyzeNonConformityWithAI(ncForm.description);
+                                                        if (analysis) {
+                                                            setNcForm({
+                                                                ...ncForm,
+                                                                severity: analysis.gravidade?.toLowerCase() === 'baixa' ? 'minor' :
+                                                                         analysis.gravidade?.toLowerCase() === 'média' ? 'major' :
+                                                                         analysis.gravidade?.toLowerCase() === 'alta' || analysis.gravidade?.toLowerCase() === 'crítica' ? 'critical' : ncForm.severity,
+                                                                rootCause: analysis.causasRaiz || ncForm.rootCause,
+                                                                correctiveAction: analysis.acoesCorretivas || ncForm.correctiveAction,
+                                                                preventiveAction: analysis.acoesPreventivas || ncForm.preventiveAction
+                                                            });
+                                                            addNotification('success', 'IA Análise Completa', 'Campos preenchidos com sugestões da IA');
+                                                        }
+                                                    }}
+                                                    disabled={aiLoading}
+                                                    className="mt-2 w-full px-3 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                                                >
+                                                    {aiLoading ? (
+                                                        <>
+                                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                            Analisando...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <i data-lucide="sparkles" className="w-4 h-4"></i>
+                                                            Analisar NC com IA
+                                                        </>
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">Fonte</label>
+                                                <select className="w-full border rounded px-3 py-2" value={ncForm.source} onChange={(e) => setNcForm({ ...ncForm, source: e.target.value })}>
+                                                    <option value="internal">Auditoria Interna</option>
+                                                    <option value="external">Auditoria Externa</option>
+                                                    <option value="customer">Reclamação Cliente</option>
+                                                    <option value="process">Processo</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">Severidade</label>
+                                                <select className="w-full border rounded px-3 py-2" value={ncForm.severity} onChange={(e) => setNcForm({ ...ncForm, severity: e.target.value })}>
+                                                    <option value="minor">Menor</option>
+                                                    <option value="major">Maior</option>
+                                                    <option value="critical">Crítica</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <input type="text" placeholder="Responsável" className="w-full border rounded px-3 py-2" value={ncForm.responsable} onChange={(e) => setNcForm({ ...ncForm, responsable: e.target.value })} />
+                                        <textarea placeholder="Análise de Causa Raiz (5 Porquês, Ishikawa)" className="w-full border rounded px-3 py-2" rows="2" value={ncForm.rootCause} onChange={(e) => setNcForm({ ...ncForm, rootCause: e.target.value })} />
+                                        <textarea placeholder="Ação Corretiva" className="w-full border rounded px-3 py-2" rows="2" value={ncForm.correctiveAction} onChange={(e) => setNcForm({ ...ncForm, correctiveAction: e.target.value })} />
+                                        <textarea placeholder="Ação Preventiva" className="w-full border rounded px-3 py-2" rows="2" value={ncForm.preventiveAction} onChange={(e) => setNcForm({ ...ncForm, preventiveAction: e.target.value })} />
+                                        <input type="date" className="w-full border rounded px-3 py-2" value={ncForm.deadline} onChange={(e) => setNcForm({ ...ncForm, deadline: e.target.value })} />
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button onClick={() => setShowNCModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
+                                        <button onClick={addNC} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Registrar NC</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Módulo ISO: Política da Qualidade (5.2)
+            const QualityPolicyModule = () => {
+                const [policy, setPolicy] = useState({ text: '', approvedBy: '', approvedDate: '', version: '1.0', commitments: [] });
+                const [isEditing, setIsEditing] = useState(false);
+
+                useEffect(() => {
+                    const saved = localStorage.getItem('pmbok_quality_policy');
+                    if (saved) setPolicy(JSON.parse(saved));
+                }, []);
+
+                useEffect(() => {
+                    localStorage.setItem('pmbok_quality_policy', JSON.stringify(policy));
+                }, [policy]);
+
+                const savePolicy = () => {
+                    setPolicy({ ...policy, approvedDate: new Date().toISOString() });
+                    setIsEditing(false);
+                    addNotification('success', 'Política Salva', 'Política da Qualidade atualizada com sucesso');
+                };
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Política da Qualidade (ISO 5.2)</h2>
+                                <p className="text-sm text-gray-600">Definição e comunicação da política da qualidade</p>
+                            </div>
+                            <button onClick={() => setIsEditing(!isEditing)} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2">
+                                <i data-lucide={isEditing ? 'x' : 'edit'} className="w-4 h-4"></i>
+                                {isEditing ? 'Cancelar' : 'Editar'}
+                            </button>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow p-6">
+                            {isEditing ? (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Política da Qualidade</label>
+                                        <textarea className="w-full border rounded px-3 py-2" rows="10" value={policy.text} onChange={(e) => setPolicy({ ...policy, text: e.target.value })} placeholder="Digite a política da qualidade da organização...&#10;&#10;Exemplo:&#10;'Nossa organização está comprometida em:&#10;- Satisfazer os requisitos dos clientes&#10;- Melhoria contínua dos processos&#10;- Conformidade com requisitos aplicáveis&#10;- Desenvolvimento de competências da equipe'" />
+                                        {geminiApiKey && (
+                                            <button
+                                                onClick={async () => {
+                                                    const generatedPolicy = await generateQualityPolicyWithAI(
+                                                        currentUser?.company || 'Organização',
+                                                        activeProject?.name || 'Gestão de Projetos'
+                                                    );
+                                                    if (generatedPolicy) {
+                                                        setPolicy({ ...policy, text: generatedPolicy });
+                                                        addNotification('success', 'Política Gerada', 'Política da Qualidade gerada pela IA com sucesso!');
+                                                    }
+                                                }}
+                                                disabled={aiLoading}
+                                                className="mt-2 w-full px-3 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                                            >
+                                                {aiLoading ? (
+                                                    <>
+                                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                        Gerando...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <i data-lucide="sparkles" className="w-4 h-4"></i>
+                                                        Gerar Política com IA
+                                                    </>
+                                                )}
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Aprovado por</label>
+                                            <input type="text" className="w-full border rounded px-3 py-2" value={policy.approvedBy} onChange={(e) => setPolicy({ ...policy, approvedBy: e.target.value })} placeholder="Nome do Diretor/CEO" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Versão</label>
+                                            <input type="text" className="w-full border rounded px-3 py-2" value={policy.version} onChange={(e) => setPolicy({ ...policy, version: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <button onClick={savePolicy} className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600">Salvar Política</button>
+                                </div>
+                            ) : (
+                                <div>
+                                    {policy.text ? (
+                                        <div>
+                                            <div className="prose max-w-none">
+                                                <div className="whitespace-pre-wrap border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded">{policy.text}</div>
+                                            </div>
+                                            <div className="mt-6 pt-6 border-t">
+                                                <div className="grid grid-cols-3 gap-4 text-sm">
+                                                    <div><strong>Aprovado por:</strong> {policy.approvedBy || 'Não definido'}</div>
+                                                    <div><strong>Data:</strong> {policy.approvedDate ? new Date(policy.approvedDate).toLocaleDateString('pt-BR') : 'Não aprovado'}</div>
+                                                    <div><strong>Versão:</strong> {policy.version}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-12 text-gray-500">
+                                            <i data-lucide="file-text" className="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                                            <p>Nenhuma política da qualidade definida</p>
+                                            <button onClick={() => setIsEditing(true)} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Criar Política</button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                            <h4 className="font-semibold mb-2">Requisitos ISO 9001:2015 - Cláusula 5.2</h4>
+                            <ul className="text-sm space-y-1 text-gray-700">
+                                <li>✓ Apropriada ao propósito e contexto da organização</li>
+                                <li>✓ Provê estrutura para estabelecer objetivos da qualidade</li>
+                                <li>✓ Inclui compromisso em satisfazer requisitos aplicáveis</li>
+                                <li>✓ Inclui compromisso com melhoria contínua do SGQ</li>
+                                <li>✓ Disponível como informação documentada</li>
+                                <li>✓ Comunicada, compreendida e aplicada na organização</li>
+                                <li>✓ Disponível para partes interessadas relevantes</li>
+                            </ul>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Módulo de Configuração de IA
+            const AISettingsModule = () => {
+                const [apiKeyInput, setApiKeyInput] = useState(geminiApiKey);
+                const [showKey, setShowKey] = useState(false);
+
+                const saveApiKey = () => {
+                    setGeminiApiKey(apiKeyInput);
+                    addNotification('success', 'Chave Salva', 'Chave API do Gemini configurada com sucesso!');
+                };
+
+                const testConnection = async () => {
+                    if (!apiKeyInput) {
+                        addNotification('error', 'Erro', 'Digite uma chave API primeiro');
+                        return;
+                    }
+
+                    addNotification('info', 'Testando', 'Testando conexão com Gemini AI...');
+                    setAiLoading(true);
+
+                    const tempKey = geminiApiKey;
+                    setGeminiApiKey(apiKeyInput);
+
+                    const result = await chatWithAI('Olá, você está funcionando?');
+
+                    if (result) {
+                        addNotification('success', 'Sucesso!', 'Conexão com Gemini AI estabelecida!');
+                    } else {
+                        setGeminiApiKey(tempKey);
+                    }
+
+                    setAiLoading(false);
+                };
+
+                return (
+                    <div className="p-6">
+                        <div className="mb-6">
+                            <h2 className="text-2xl font-bold">Configurações de IA</h2>
+                            <p className="text-sm text-gray-600">Configure a integração com Google Gemini AI</p>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow p-6 max-w-2xl">
+                            <div className="mb-6">
+                                <div className="flex items-start gap-3 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                                    <i data-lucide="info" className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5"></i>
+                                    <div className="text-sm">
+                                        <p className="font-semibold mb-2">Como obter sua chave API do Gemini (Gratuita):</p>
+                                        <ol className="list-decimal ml-4 space-y-1">
+                                            <li>Acesse <a href="https://ai.google.dev/" target="_blank" className="text-blue-600 underline">https://ai.google.dev/</a></li>
+                                            <li>Clique em "Get API Key" ou "Get Started"</li>
+                                            <li>Faça login com sua conta Google</li>
+                                            <li>Crie um novo projeto (ou use um existente)</li>
+                                            <li>Copie a chave API gerada</li>
+                                            <li>Cole a chave abaixo</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Chave API do Google Gemini</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type={showKey ? "text" : "password"}
+                                            className="flex-1 border rounded px-3 py-2 font-mono text-sm"
+                                            value={apiKeyInput}
+                                            onChange={(e) => setApiKeyInput(e.target.value)}
+                                            placeholder="AIza..."
+                                        />
+                                        <button
+                                            onClick={() => setShowKey(!showKey)}
+                                            className="px-3 py-2 border rounded hover:bg-gray-50"
+                                        >
+                                            <i data-lucide={showKey ? "eye-off" : "eye"} className="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={saveApiKey}
+                                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2"
+                                    >
+                                        <i data-lucide="save" className="w-4 h-4"></i>
+                                        Salvar Chave
+                                    </button>
+                                    <button
+                                        onClick={testConnection}
+                                        disabled={aiLoading || !apiKeyInput}
+                                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {aiLoading ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                Testando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i data-lucide="zap" className="w-4 h-4"></i>
+                                                Testar Conexão
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+
+                                {geminiApiKey && (
+                                    <div className="p-3 bg-green-50 border-l-4 border-green-500 rounded">
+                                        <div className="flex items-center gap-2">
+                                            <i data-lucide="check-circle" className="w-4 h-4 text-green-600"></i>
+                                            <span className="text-sm text-green-800">Chave API configurada e salva</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-8 pt-6 border-t">
+                                <h3 className="font-semibold mb-3">Recursos de IA Disponíveis:</h3>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="flex items-start gap-2 text-sm">
+                                        <i data-lucide="sparkles" className="w-4 h-4 text-purple-500 mt-0.5"></i>
+                                        <span>Análise automática de riscos</span>
+                                    </div>
+                                    <div className="flex items-start gap-2 text-sm">
+                                        <i data-lucide="file-text" className="w-4 h-4 text-blue-500 mt-0.5"></i>
+                                        <span>Geração de política da qualidade</span>
+                                    </div>
+                                    <div className="flex items-start gap-2 text-sm">
+                                        <i data-lucide="alert-triangle" className="w-4 h-4 text-red-500 mt-0.5"></i>
+                                        <span>Análise de não conformidades</span>
+                                    </div>
+                                    <div className="flex items-start gap-2 text-sm">
+                                        <i data-lucide="message-circle" className="w-4 h-4 text-green-500 mt-0.5"></i>
+                                        <span>Chat assistente PMBOK/ISO</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 p-4 bg-gray-50 rounded text-xs text-gray-600">
+                                <p className="font-semibold mb-1">Privacidade e Segurança:</p>
+                                <ul className="list-disc ml-4 space-y-0.5">
+                                    <li>Sua chave API é armazenada apenas localmente no seu navegador</li>
+                                    <li>Nenhum dado é enviado para servidores terceiros além da API do Google</li>
+                                    <li>Você pode remover a chave a qualquer momento limpando o localStorage</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Componente de Chat com IA
+            const AIAssistant = () => {
+                const [messages, setMessages] = useState([]);
+                const [inputMessage, setInputMessage] = useState('');
+                const chatEndRef = useRef(null);
+
+                const scrollToBottom = () => {
+                    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                };
+
+                useEffect(scrollToBottom, [messages]);
+
+                const sendMessage = async () => {
+                    if (!inputMessage.trim()) return;
+                    if (!geminiApiKey) {
+                        addNotification('error', 'API Key Ausente', 'Configure a chave API nas configurações de IA');
+                        return;
+                    }
+
+                    const userMsg = { role: 'user', content: inputMessage, timestamp: new Date() };
+                    setMessages([...messages, userMsg]);
+                    setInputMessage('');
+
+                    const response = await chatWithAI(inputMessage);
+
+                    if (response) {
+                        const aiMsg = { role: 'assistant', content: response, timestamp: new Date() };
+                        setMessages(prev => [...prev, aiMsg]);
+                    }
+                };
+
+                const quickActions = [
+                    { label: 'Explicar PMBOK 7', prompt: 'Explique brevemente o PMBOK 7 e seus princípios' },
+                    { label: 'Dicas ISO 9001', prompt: 'Quais são as principais dicas para implementar ISO 9001?' },
+                    { label: 'Gestão de Riscos', prompt: 'Como fazer uma boa gestão de riscos em projetos?' },
+                    { label: 'Stakeholders', prompt: 'Como gerenciar stakeholders efetivamente?' }
+                ];
+
+                const handleQuickAction = (prompt) => {
+                    setInputMessage(prompt);
+                };
+
+                if (!showAiChat) return null;
+
+                return (
+                    <div className="fixed bottom-4 right-4 w-96 h-[500px] bg-white rounded-lg shadow-2xl flex flex-col z-50">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white p-4 rounded-t-lg flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                <i data-lucide="bot" className="w-5 h-5"></i>
+                                <div>
+                                    <h3 className="font-semibold">Assistente IA</h3>
+                                    <p className="text-xs opacity-90">PMBOK 7 & ISO 9001</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowAiChat(false)} className="hover:bg-white/20 p-1 rounded">
+                                <i data-lucide="x" className="w-5 h-5"></i>
+                            </button>
+                        </div>
+
+                        {/* Messages */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            {messages.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <i data-lucide="sparkles" className="w-12 h-12 mx-auto mb-3 text-purple-300"></i>
+                                    <p className="text-sm text-gray-600 mb-4">Olá! Como posso ajudar com seu projeto?</p>
+                                    <div className="space-y-2">
+                                        {quickActions.map((action, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleQuickAction(action.prompt)}
+                                                className="block w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded"
+                                            >
+                                                {action.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                messages.map((msg, idx) => (
+                                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[80%] rounded-lg px-3 py-2 ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-800'}`}>
+                                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                            <p className="text-xs opacity-70 mt-1">{new Date(msg.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                            {aiLoading && (
+                                <div className="flex justify-start">
+                                    <div className="bg-gray-100 rounded-lg px-3 py-2">
+                                        <div className="flex gap-1">
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={chatEndRef} />
+                        </div>
+
+                        {/* Input */}
+                        <div className="border-t p-3">
+                            {!geminiApiKey && (
+                                <div className="mb-2 p-2 bg-yellow-50 border-l-2 border-yellow-400 text-xs text-yellow-800">
+                                    Configure a chave API nas configurações primeiro
+                                </div>
+                            )}
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    className="flex-1 border rounded px-3 py-2 text-sm"
+                                    placeholder="Digite sua pergunta..."
+                                    value={inputMessage}
+                                    onChange={(e) => setInputMessage(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                                    disabled={aiLoading || !geminiApiKey}
+                                />
+                                <button
+                                    onClick={sendMessage}
+                                    disabled={aiLoading || !geminiApiKey || !inputMessage.trim()}
+                                    className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <i data-lucide="send" className="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
             // Layout Principal
             const MainLayout = () => {
                 const handleLogout = () => {
@@ -1375,6 +2156,11 @@
                     { id: 'risks', name: 'Riscos', icon: 'alert-triangle' },
                     { id: 'stakeholders', name: 'Stakeholders', icon: 'users' },
                     { id: 'reports', name: 'Relatórios', icon: 'file-text' },
+                    { id: 'divider1', name: '─── ISO 9001 ───', icon: null, disabled: true },
+                    { id: 'quality-policy', name: 'Política Qualidade', icon: 'shield-check' },
+                    { id: 'non-conformities', name: 'Não Conformidades', icon: 'alert-octagon' },
+                    { id: 'divider2', name: '─── Inteligência Artificial ───', icon: null, disabled: true },
+                    { id: 'ai-settings', name: 'Configurar IA', icon: 'brain' },
                     { id: 'settings', name: t('settings'), icon: 'settings' }
                 ];
 
@@ -1442,17 +2228,23 @@
                                     <ul className="space-y-2">
                                         {menuItems.map(item => (
                                             <li key={item.id}>
-                                                <button
-                                                    onClick={() => setActiveView(item.id)}
-                                                    className={`w-full text-left px-3 py-2 rounded flex items-center gap-3 ${
-                                                        activeView === item.id 
-                                                            ? 'bg-blue-50 text-blue-600' 
-                                                            : 'text-gray-700 hover:bg-gray-50'
-                                                    }`}
-                                                >
-                                                    <i data-lucide={item.icon} className="w-4 h-4"></i>
-                                                    {item.name}
-                                                </button>
+                                                {item.disabled ? (
+                                                    <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                                        {item.name}
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => setActiveView(item.id)}
+                                                        className={`w-full text-left px-3 py-2 rounded flex items-center gap-3 ${
+                                                            activeView === item.id
+                                                                ? 'bg-blue-50 text-blue-600'
+                                                                : 'text-gray-700 hover:bg-gray-50'
+                                                        }`}
+                                                    >
+                                                        {item.icon && <i data-lucide={item.icon} className="w-4 h-4"></i>}
+                                                        {item.name}
+                                                    </button>
+                                                )}
                                             </li>
                                         ))}
                                     </ul>
@@ -1533,8 +2325,25 @@
                                 {activeView === 'risks' && <RisksManager />}
                                 {activeView === 'stakeholders' && <StakeholdersManager />}
                                 {activeView === 'reports' && <ReportsModule />}
+                                {activeView === 'quality-policy' && <QualityPolicyModule />}
+                                {activeView === 'non-conformities' && <NonConformitiesModule />}
+                                {activeView === 'ai-settings' && <AISettingsModule />}
                             </div>
                         </div>
+
+                        {/* AI Assistant Floating Button */}
+                        {geminiApiKey && (
+                            <button
+                                onClick={() => setShowAiChat(!showAiChat)}
+                                className="fixed bottom-4 right-4 w-14 h-14 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 flex items-center justify-center z-40"
+                                title="Assistente IA"
+                            >
+                                <i data-lucide="bot" className="w-6 h-6"></i>
+                            </button>
+                        )}
+
+                        {/* AI Chat Window */}
+                        <AIAssistant />
 
                         {/* Modals */}
                         {showModal === 'project' && (
