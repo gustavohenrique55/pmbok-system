@@ -1,0 +1,25 @@
+{
+  "name": "project-management-7-pro",
+  "version": "2.0.0",
+  "description": "Sistema Completo de Gestão de Projetos baseado no PMBOK 7",
+  "main": "index.html",
+  "scripts": {
+    "deploy": "firebase deploy",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "serve": "firebase serve",
+    "login": "firebase login",
+    "init": "firebase init",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": [
+    "pmbok",
+    "project-management",
+    "react",
+    "firebase"
+  ],
+  "author": "Gustavo Henrique",
+  "license": "MIT",
+  "devDependencies": {
+    "firebase-tools": "^13.0.0"
+  }
+}
