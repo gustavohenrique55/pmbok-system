@@ -22,7 +22,7 @@ Sistema Completo de Gestão de Projetos baseado 100% no **PMBOK 7**
 
 ## 🎯 Sobre
 
-O **PMBOK 7 Manager Pro** é o **primeiro sistema web 100% alinhado ao PMBOK 7** - focado nos **8 Domínios de Desempenho** e **12 Princípios** do PMI. Diferente de ferramentas tradicionais baseadas no PMBOK 6, este sistema adota a filosofia moderna de gestão de projetos: ágil, adaptativa e orientada a valor.
+O **Project Management 7 PRO** é o **primeiro sistema web 100% alinhado ao PMBOK 7** - focado nos **8 Domínios de Desempenho** e **12 Princípios** do PMI. Diferente de ferramentas tradicionais baseadas no PMBOK 6, este sistema adota a filosofia moderna de gestão de projetos: ágil, adaptativa e orientada a valor.
 
 ### 🎯 8 Domínios de Desempenho PMBOK 7 - TOTALMENTE IMPLEMENTADOS
 
