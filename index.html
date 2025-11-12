@@ -56,6 +56,10 @@
             const [qualityObjectives, setQualityObjectives] = useState([]);
             const [meetingNotes, setMeetingNotes] = useState([]);
 
+            // Estados para Custos e IA Preditiva
+            const [costs, setCosts] = useState([]);
+            const [costPrediction, setCostPrediction] = useState(null);
+
             // Estados para IA (Gemini)
             const [geminiApiKey, setGeminiApiKey] = useState('');
             const [aiChatHistory, setAiChatHistory] = useState([]);
@@ -2879,6 +2883,328 @@ Seja conciso, prático e profissional.`;
                 );
             };
 
+            // Módulo IA: Análise Preditiva de Custos
+            const CostPredictionModule = () => {
+                const [costForm, setCostForm] = useState({ category: 'labor', description: '', amount: '', date: '', type: 'actual' });
+                const [showCostModal, setShowCostModal] = useState(false);
+                const [analyzing, setAnalyzing] = useState(false);
+                const [showPrediction, setShowPrediction] = useState(false);
+
+                const addCost = () => {
+                    const newCost = { ...costForm, id: Date.now(), projectId: activeProject?.id, createdAt: new Date().toISOString() };
+                    setCosts([...costs, newCost]);
+                    setCostForm({ category: 'labor', description: '', amount: '', date: '', type: 'actual' });
+                    setShowCostModal(false);
+                    addNotification('success', 'Custo Registrado', 'Custo adicionado ao projeto');
+                };
+
+                const analyzeCostsWithAI = async () => {
+                    if (!geminiApiKey) {
+                        addNotification('error', 'IA não configurada', 'Configure a chave API do Gemini primeiro');
+                        return;
+                    }
+
+                    if (filteredCosts.length < 3) {
+                        addNotification('warning', 'Dados insuficientes', 'Registre pelo menos 3 custos para análise preditiva');
+                        return;
+                    }
+
+                    setAnalyzing(true);
+
+                    const totalActual = filteredCosts.filter(c => c.type === 'actual').reduce((sum, c) => sum + parseFloat(c.amount), 0);
+                    const budget = activeProject?.budget || 0;
+                    const costsByCategory = filteredCosts.reduce((acc, cost) => {
+                        acc[cost.category] = (acc[cost.category] || 0) + parseFloat(cost.amount);
+                        return acc;
+                    }, {});
+
+                    const prompt = `Você é um especialista em análise financeira de projetos PMBOK 7.
+
+Dados do Projeto:
+- Orçamento Total: R$ ${budget.toLocaleString('pt-BR')}
+- Custos Registrados até agora: R$ ${totalActual.toLocaleString('pt-BR')}
+- Percentual Consumido: ${((totalActual / budget) * 100).toFixed(1)}%
+
+Custos por Categoria:
+${Object.entries(costsByCategory).map(([cat, val]) => `- ${cat}: R$ ${val.toLocaleString('pt-BR')}`).join('\n')}
+
+Histórico de Custos (últimos registros):
+${filteredCosts.slice(-5).map(c => `${c.date}: ${c.category} - R$ ${parseFloat(c.amount).toLocaleString('pt-BR')} (${c.description})`).join('\n')}
+
+Faça uma análise preditiva completa e retorne APENAS um JSON válido (sem markdown, sem texto adicional) com esta estrutura exata:
+{
+  "custoProjetado": número (custo total projetado até o fim do projeto),
+  "risco": "baixo" | "médio" | "alto" | "crítico",
+  "probabilidadeEstouro": número (0-100, probabilidade de estourar orçamento),
+  "economiaOuEstouro": número (negativo = estouro, positivo = economia),
+  "tendencias": ["tendência 1", "tendência 2", "tendência 3"],
+  "recomendacoes": ["ação 1", "ação 2", "ação 3"],
+  "alertas": ["alerta 1", "alerta 2"],
+  "prevMensal": número (previsão de custo médio mensal),
+  "categoriaRisco": "string (categoria com maior risco)"
+}`;
+
+                    const result = await callGeminiAPI(prompt);
+                    setAnalyzing(false);
+
+                    if (result) {
+                        try {
+                            // Limpar markdown se houver
+                            let cleanResult = result.trim();
+                            if (cleanResult.startsWith('```')) {
+                                cleanResult = cleanResult.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                            }
+                            const prediction = JSON.parse(cleanResult);
+                            setCostPrediction(prediction);
+                            setShowPrediction(true);
+                            addNotification('success', 'Análise Concluída', 'Previsão de custos gerada com IA');
+                        } catch (e) {
+                            console.error('Erro ao parsear previsão:', e);
+                            addNotification('error', 'Erro na análise', 'Não foi possível processar a resposta da IA');
+                        }
+                    }
+                };
+
+                const filteredCosts = costs.filter(c => !activeProject || c.projectId === activeProject.id);
+                const totalActual = filteredCosts.filter(c => c.type === 'actual').reduce((sum, c) => sum + parseFloat(c.amount), 0);
+                const totalPlanned = filteredCosts.filter(c => c.type === 'planned').reduce((sum, c) => sum + parseFloat(c.amount), 0);
+                const budget = activeProject?.budget || 0;
+                const consumed = budget > 0 ? ((totalActual / budget) * 100).toFixed(1) : 0;
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Análise Preditiva de Custos com IA</h2>
+                                <p className="text-sm text-gray-600">Previsão inteligente usando Gemini AI</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={analyzeCostsWithAI}
+                                    disabled={analyzing || !geminiApiKey}
+                                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded hover:from-purple-600 hover:to-blue-600 flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    {analyzing ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            Analisando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i data-lucide="brain" className="w-4 h-4"></i>
+                                            Analisar com IA
+                                        </>
+                                    )}
+                                </button>
+                                <button onClick={() => setShowCostModal(true)} className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center gap-2">
+                                    <i data-lucide="plus" className="w-4 h-4"></i> Novo Custo
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Resumo de Orçamento */}
+                        <div className="grid md:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-white rounded-lg p-6 shadow">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Orçamento Total</p>
+                                        <p className="text-2xl font-bold text-blue-600">R$ {budget.toLocaleString('pt-BR')}</p>
+                                    </div>
+                                    <i data-lucide="wallet" className="w-10 h-10 text-blue-500"></i>
+                                </div>
+                            </div>
+                            <div className="bg-white rounded-lg p-6 shadow">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Custos Reais</p>
+                                        <p className="text-2xl font-bold text-orange-600">R$ {totalActual.toLocaleString('pt-BR')}</p>
+                                    </div>
+                                    <i data-lucide="trending-up" className="w-10 h-10 text-orange-500"></i>
+                                </div>
+                            </div>
+                            <div className="bg-white rounded-lg p-6 shadow">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Saldo Restante</p>
+                                        <p className={`text-2xl font-bold ${budget - totalActual < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                            R$ {(budget - totalActual).toLocaleString('pt-BR')}
+                                        </p>
+                                    </div>
+                                    <i data-lucide="dollar-sign" className="w-10 h-10 text-green-500"></i>
+                                </div>
+                            </div>
+                            <div className="bg-white rounded-lg p-6 shadow">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-600">% Consumido</p>
+                                        <p className={`text-2xl font-bold ${consumed > 90 ? 'text-red-600' : consumed > 70 ? 'text-orange-600' : 'text-green-600'}`}>
+                                            {consumed}%
+                                        </p>
+                                    </div>
+                                    <i data-lucide="pie-chart" className="w-10 h-10 text-purple-500"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Previsão da IA */}
+                        {showPrediction && costPrediction && (
+                            <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-6 mb-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex-shrink-0">
+                                        <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                                            <i data-lucide="sparkles" className="w-8 h-8 text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                            <span>Previsão Inteligente</span>
+                                            <span className={`px-3 py-1 rounded text-sm ${
+                                                costPrediction.risco === 'crítico' ? 'bg-red-100 text-red-700' :
+                                                costPrediction.risco === 'alto' ? 'bg-orange-100 text-orange-700' :
+                                                costPrediction.risco === 'médio' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+                                            }`}>
+                                                Risco: {costPrediction.risco.toUpperCase()}
+                                            </span>
+                                        </h3>
+
+                                        <div className="grid md:grid-cols-3 gap-4 mb-4">
+                                            <div className="bg-white rounded p-4 shadow-sm">
+                                                <p className="text-sm text-gray-600 mb-1">Custo Projetado</p>
+                                                <p className="text-xl font-bold text-purple-600">R$ {costPrediction.custoProjetado?.toLocaleString('pt-BR')}</p>
+                                            </div>
+                                            <div className="bg-white rounded p-4 shadow-sm">
+                                                <p className="text-sm text-gray-600 mb-1">Prob. de Estouro</p>
+                                                <p className="text-xl font-bold text-orange-600">{costPrediction.probabilidadeEstouro}%</p>
+                                            </div>
+                                            <div className="bg-white rounded p-4 shadow-sm">
+                                                <p className="text-sm text-gray-600 mb-1">{costPrediction.economiaOuEstouro >= 0 ? 'Economia' : 'Estouro'}</p>
+                                                <p className={`text-xl font-bold ${costPrediction.economiaOuEstouro >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    R$ {Math.abs(costPrediction.economiaOuEstouro)?.toLocaleString('pt-BR')}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {costPrediction.alertas && costPrediction.alertas.length > 0 && (
+                                            <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+                                                <h4 className="font-bold text-red-800 mb-2 flex items-center gap-2">
+                                                    <i data-lucide="alert-triangle" className="w-5 h-5"></i>
+                                                    Alertas
+                                                </h4>
+                                                <ul className="text-sm text-red-700 space-y-1">
+                                                    {costPrediction.alertas.map((alerta, i) => (
+                                                        <li key={i}>⚠️ {alerta}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                                <h4 className="font-bold mb-2 flex items-center gap-2">
+                                                    <i data-lucide="trending-up" className="w-4 h-4"></i>
+                                                    Tendências Identificadas
+                                                </h4>
+                                                <ul className="text-sm space-y-1">
+                                                    {costPrediction.tendencias?.map((t, i) => (
+                                                        <li key={i} className="flex items-start gap-2">
+                                                            <span className="text-blue-500">📊</span>
+                                                            <span>{t}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold mb-2 flex items-center gap-2">
+                                                    <i data-lucide="lightbulb" className="w-4 h-4"></i>
+                                                    Recomendações
+                                                </h4>
+                                                <ul className="text-sm space-y-1">
+                                                    {costPrediction.recomendacoes?.map((r, i) => (
+                                                        <li key={i} className="flex items-start gap-2">
+                                                            <span className="text-green-500">✓</span>
+                                                            <span>{r}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Lista de Custos */}
+                        <div className="bg-white rounded-lg p-6 shadow">
+                            <h3 className="font-bold text-lg mb-4">Histórico de Custos</h3>
+                            <div className="space-y-3">
+                                {filteredCosts.length === 0 ? (
+                                    <div className="text-center py-8">
+                                        <i data-lucide="inbox" className="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                                        <p className="text-gray-500">Nenhum custo registrado</p>
+                                    </div>
+                                ) : (
+                                    filteredCosts.map(cost => (
+                                        <div key={cost.id} className="flex items-center justify-between p-4 border rounded hover:bg-gray-50">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                                        cost.type === 'actual' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                                                    }`}>
+                                                        {cost.type === 'actual' ? 'Real' : 'Planejado'}
+                                                    </span>
+                                                    <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                                                        {cost.category}
+                                                    </span>
+                                                    <span className="text-sm text-gray-600">{new Date(cost.date).toLocaleDateString('pt-BR')}</span>
+                                                </div>
+                                                <p className="text-sm text-gray-700">{cost.description}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xl font-bold text-gray-900">R$ {parseFloat(cost.amount).toLocaleString('pt-BR')}</p>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Modal Adicionar Custo */}
+                        {showCostModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+                                    <h3 className="text-xl font-bold mb-4">Registrar Custo</h3>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <select className="w-full border rounded px-3 py-2" value={costForm.category} onChange={(e) => setCostForm({ ...costForm, category: e.target.value })}>
+                                                <option value="labor">Mão de Obra</option>
+                                                <option value="materials">Materiais</option>
+                                                <option value="equipment">Equipamentos</option>
+                                                <option value="services">Serviços</option>
+                                                <option value="travel">Viagens</option>
+                                                <option value="other">Outros</option>
+                                            </select>
+                                            <select className="w-full border rounded px-3 py-2" value={costForm.type} onChange={(e) => setCostForm({ ...costForm, type: e.target.value })}>
+                                                <option value="actual">Custo Real</option>
+                                                <option value="planned">Custo Planejado</option>
+                                            </select>
+                                        </div>
+                                        <input placeholder="Descrição do custo" className="w-full border rounded px-3 py-2" value={costForm.description} onChange={(e) => setCostForm({ ...costForm, description: e.target.value })} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <input type="number" placeholder="Valor (R$)" className="w-full border rounded px-3 py-2" value={costForm.amount} onChange={(e) => setCostForm({ ...costForm, amount: e.target.value })} />
+                                            <input type="date" className="w-full border rounded px-3 py-2" value={costForm.date} onChange={(e) => setCostForm({ ...costForm, date: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button onClick={() => setShowCostModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
+                                        <button onClick={addCost} className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Registrar Custo</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
             // Módulo de Configuração de IA
             const AISettingsModule = () => {
                 const [apiKeyInput, setApiKeyInput] = useState(geminiApiKey);
@@ -3195,6 +3521,7 @@ Seja conciso, prático e profissional.`;
                     { id: 'divider-system', name: '─── Sistema ───', icon: null, disabled: true },
                     { id: 'backup-restore', name: 'Backup/Restore', icon: 'database' },
                     { id: 'divider-ai', name: '─── Inteligência Artificial ───', icon: null, disabled: true },
+                    { id: 'cost-prediction', name: 'Análise Preditiva Custos', icon: 'trending-up' },
                     { id: 'ai-settings', name: 'Configurar IA', icon: 'brain' },
                     { id: 'settings', name: t('settings'), icon: 'settings' }
                 ];
@@ -3373,6 +3700,7 @@ Seja conciso, prático e profissional.`;
                                 {activeView === 'audits' && <InternalAuditsModule />}
                                 {activeView === 'management-review' && <ManagementReviewModule />}
                                 {activeView === 'backup-restore' && <BackupRestoreModule />}
+                                {activeView === 'cost-prediction' && <CostPredictionModule />}
                                 {activeView === 'ai-settings' && <AISettingsModule />}
                             </div>
                         </div>

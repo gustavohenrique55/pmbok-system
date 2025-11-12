@@ -191,6 +191,18 @@ O **PMBOK 7 Manager Pro** é um sistema web completo para gestão de projetos se
 - Chat especializado em PMBOK 7 e ISO 9001
 - Sugestões inteligentes
 
+### 💰 Análise Preditiva de Custos com IA (NOVO!)
+- Registro de custos do projeto (Reais e Planejados)
+- Categorização (Mão de Obra, Materiais, Equipamentos, Serviços, Viagens)
+- Dashboard com métricas financeiras em tempo real
+- **Análise preditiva usando Gemini AI**
+- Previsão de custo total do projeto
+- Cálculo de probabilidade de estouro de orçamento
+- Identificação de tendências de gastos
+- Recomendações inteligentes para economia
+- Alertas automáticos de risco financeiro
+- Análise de categorias com maior risco
+
 ### 🔔 Sistema de Notificações
 - Notificações em tempo real
 - Alertas de prazos
@@ -363,6 +375,8 @@ pmbok-system/
 | **SISTEMA** | | |
 | Backup/Restore | ✅ | Exportar/Importar dados completos |
 | Assistente IA | ✅ | Integração com Gemini AI |
+| **INTELIGÊNCIA ARTIFICIAL AVANÇADA** | | |
+| Análise Preditiva Custos | ✅ | Previsão de custos com IA |
 
 ### 📊 Status ISO 9000/9001 ATUALIZADO
 
