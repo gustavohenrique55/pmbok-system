@@ -4866,14 +4866,6 @@ Faça uma análise executiva completa e retorne APENAS um JSON válido (sem mark
                     { id: 'risks', name: 'Riscos', icon: 'alert-triangle' },
                     { id: 'stakeholders', name: 'Stakeholders', icon: 'users' },
                     { id: 'reports', name: 'Relatórios', icon: 'file-text' },
-                    { id: 'divider-iso', name: '─── ISO 9001 ───', icon: null, disabled: true },
-                    { id: 'quality-policy', name: 'Política Qualidade', icon: 'shield-check' },
-                    { id: 'quality-objectives', name: 'Objetivos Qualidade', icon: 'target' },
-                    { id: 'non-conformities', name: 'Não Conformidades', icon: 'alert-octagon' },
-                    { id: 'change-control', name: 'Controle Mudanças', icon: 'git-branch' },
-                    { id: 'suppliers', name: 'Fornecedores', icon: 'truck' },
-                    { id: 'audits', name: 'Auditorias', icon: 'clipboard-check' },
-                    { id: 'management-review', name: 'Análise Direção', icon: 'briefcase' },
                     { id: 'divider-system', name: '─── Sistema ───', icon: null, disabled: true },
                     { id: 'backup-restore', name: 'Backup/Restore', icon: 'database' },
                     { id: 'divider-ai', name: '─── Inteligência Artificial ───', icon: null, disabled: true },
@@ -5052,13 +5044,6 @@ Faça uma análise executiva completa e retorne APENAS um JSON válido (sem mark
                                 {activeView === 'risks' && <RisksManager />}
                                 {activeView === 'stakeholders' && <StakeholdersManager />}
                                 {activeView === 'reports' && <ReportsModule />}
-                                {activeView === 'quality-policy' && <QualityPolicyModule />}
-                                {activeView === 'quality-objectives' && <QualityObjectivesModule />}
-                                {activeView === 'change-control' && <ChangeControlModule />}
-                                {activeView === 'non-conformities' && <NonConformitiesModule />}
-                                {activeView === 'suppliers' && <SuppliersModule />}
-                                {activeView === 'audits' && <InternalAuditsModule />}
-                                {activeView === 'management-review' && <ManagementReviewModule />}
                                 {activeView === 'backup-restore' && <BackupRestoreModule />}
                                 {activeView === 'cost-prediction' && <CostPredictionModule />}
                                 {activeView === 'ai-settings' && <AISettingsModule />}

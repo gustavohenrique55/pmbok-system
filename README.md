@@ -195,42 +195,7 @@ O **PMBOK 7 Manager Pro** é o **primeiro sistema web 100% alinhado ao PMBOK 7**
 - Exportação em PDF
 - Integração com Google Calendar (JSON)
 
-### 🎯 Objetivos da Qualidade - ISO 6.2 (NOVO!)
-- Definição de objetivos mensuráveis
-- Indicadores de desempenho
-- Metas e prazos
-- Responsáveis
-- Acompanhamento de status
-
-### 🔄 Controle de Mudanças - ISO 6.3 (NOVO!)
-- Solicitações de mudança
-- Análise de impacto
-- Aprovação/rejeição
-- Histórico de mudanças
-- Justificativas documentadas
-
-### 🚚 Gestão de Fornecedores - ISO 8.4 (NOVO!)
-- Cadastro de fornecedores
-- Avaliação de performance (1-10)
-- Categorização de serviços
-- Status de aprovação
-- Observações e notas
-
-### 🔍 Auditorias Internas - ISO 9.2 (NOVO!)
-- Planejamento de auditorias
-- Auditores e escopo
-- Constatações e achados
-- Status (Agendada, Em Andamento, Concluída)
-- Tipos (Interna/Externa)
-
-### 👔 Análise Crítica pela Direção - ISO 9.3 (NOVO!)
-- Reuniões de análise crítica
-- Participantes e tópicos
-- Decisões tomadas
-- Itens de ação
-- Acompanhamento
-
-### 💾 Backup e Restore (NOVO!)
+### 💾 Backup e Restore
 - Exportação completa de dados (JSON)
 - Importação de backups
 - Versionamento de dados
@@ -430,25 +395,9 @@ pmbok-system/
 | Exportação PDF | ✅ | Relatórios profissionais |
 | **Domínio 8 - Incerteza** | | |
 | Gestão de Riscos | ✅ | Matriz Probabilidade x Impacto |
-| **ISO 9001:2015** | | |
-| Política da Qualidade | ✅ | ISO 5.2 - Gestão da política |
-| Objetivos da Qualidade | ✅ | ISO 6.2 - Metas e indicadores |
-| Controle de Mudanças | ✅ | ISO 6.3 - Gestão de mudanças |
-| Não Conformidades | ✅ | ISO 8.7, 10.2 - Controle de NCs |
-| Gestão de Fornecedores | ✅ | ISO 8.4 - Avaliação de fornecedores |
-| Auditorias Internas | ✅ | ISO 9.2 - Planejamento de auditorias |
-| Análise Crítica | ✅ | ISO 9.3 - Análise pela direção |
 | **SISTEMA E FERRAMENTAS** | | |
 | Backup/Restore | ✅ | Exportar/Importar dados completos |
 | Assistente IA Gemini | ✅ | Chat especializado em PMBOK 7 |
-| **ISO 9001 (Módulos Complementares)** | | |
-| Política da Qualidade | ✅ | ISO 5.2 |
-| Objetivos da Qualidade | ✅ | ISO 6.2 |
-| Controle de Mudanças | ✅ | ISO 6.3 |
-| Não Conformidades | ✅ | ISO 8.7, 10.2 |
-| Gestão de Fornecedores | ✅ | ISO 8.4 |
-| Auditorias Internas | ✅ | ISO 9.2 |
-| Análise Crítica | ✅ | ISO 9.3 |
 
 ### 🎯 Status PMBOK 7
 
@@ -457,8 +406,9 @@ pmbok-system/
 - ✅ **TODOS os 8 Domínios de Desempenho implementados**
 - ✅ Sistema totalmente alinhado à filosofia moderna do PMBOK 7
 - ✅ Suporte a abordagens Preditiva, Ágil, Híbrida e Adaptativa
-- ✅ 30+ módulos e funcionalidades
-- ✅ IA integrada para análises preditivas
+- ✅ 20+ módulos focados exclusivamente em PMBOK 7
+- ✅ IA integrada (Gemini) para análises preditivas
+- ✅ 100% PMBOK 7 - sem módulos de outras normas
 - ✅ Adequado para projetos de qualquer tamanho e complexidade
 
 ### 🚧 Roadmap Futuro (Infraestrutura)
