@@ -116,6 +116,27 @@ O **PMBOK 7 Manager Pro** é um sistema web completo para gestão de projetos se
 - Impacto (Alto, Médio, Baixo)
 - Base de conhecimento
 
+### 📊 Análise de Valor Agregado - EVM (NOVO!)
+- **Earned Value Management** conforme PMBOK 7
+- Cálculo automático de 11 métricas EVM:
+  - **BAC** (Budget at Completion) - Orçamento total
+  - **PV** (Planned Value) - Valor planejado
+  - **EV** (Earned Value) - Valor agregado
+  - **AC** (Actual Cost) - Custo real
+  - **SV** (Schedule Variance) - Variação de prazo
+  - **CV** (Cost Variance) - Variação de custo
+  - **SPI** (Schedule Performance Index) - Índice de desempenho de prazo
+  - **CPI** (Cost Performance Index) - Índice de desempenho de custo
+  - **EAC** (Estimate at Completion) - Estimativa no término
+  - **ETC** (Estimate to Complete) - Estimativa para completar
+  - **VAC** (Variance at Completion) - Variação no término
+- Dashboard visual com indicadores de performance
+- Análise de tendências (cronograma e custos)
+- Projeções para término do projeto
+- **Análise preditiva com IA Gemini**
+- Identificação automática de riscos financeiros e de cronograma
+- Recomendações inteligentes baseadas em desempenho
+
 ### ⚠️ Gestão de Riscos
 - Registro de riscos
 - Matriz Probabilidade x Impacto
@@ -360,6 +381,7 @@ pmbok-system/
 | Gestão de Entregas | ✅ | Controle de deliverables |
 | Gestão de Comunicações | ✅ | Plano de comunicação |
 | Lições Aprendidas | ✅ | Registro de aprendizados |
+| Análise Valor Agregado (EVM) | ✅ | Earned Value Management completo |
 | Riscos | ✅ | Matriz e análise de riscos |
 | Stakeholders | ✅ | Matriz Poder/Interesse |
 | Relatórios | ✅ | Dashboards e exportação |
@@ -402,8 +424,8 @@ pmbok-system/
 **Módulos PMBOK Avançados:**
 - [ ] Timeline/Gantt Chart Interativo
 - [ ] Gestão de Recursos Humanos
-- [ ] Controle de Custos EVM
 - [ ] Gestão de Aquisições
+- [ ] Gestão de Tempo Avançada
 
 **Módulos ISO 9001 Complementares:**
 - [ ] Gestão de Competências (ISO 7.2)

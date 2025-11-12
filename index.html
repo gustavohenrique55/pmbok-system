@@ -60,6 +60,10 @@
             const [costs, setCosts] = useState([]);
             const [costPrediction, setCostPrediction] = useState(null);
 
+            // Estados para Earned Value Management (EVM)
+            const [evmData, setEvmData] = useState(null);
+            const [evmAnalysis, setEvmAnalysis] = useState(null);
+
             // Estados para IA (Gemini)
             const [geminiApiKey, setGeminiApiKey] = useState('');
             const [aiChatHistory, setAiChatHistory] = useState([]);
@@ -3205,6 +3209,500 @@ Faça uma análise preditiva completa e retorne APENAS um JSON válido (sem mark
                 );
             };
 
+            // Módulo EVM: Análise de Valor Agregado (Earned Value Management)
+            const EarnedValueModule = () => {
+                const [analyzing, setAnalyzing] = useState(false);
+                const [showAnalysis, setShowAnalysis] = useState(false);
+
+                // Calcular métricas EVM
+                const calculateEVM = () => {
+                    if (!activeProject) return null;
+
+                    // BAC = Budget at Completion
+                    const BAC = parseFloat(activeProject.budget) || 0;
+
+                    // AC = Actual Cost (soma dos custos reais)
+                    const filteredCosts = costs.filter(c => c.projectId === activeProject.id);
+                    const AC = filteredCosts
+                        .filter(c => c.type === 'actual')
+                        .reduce((sum, c) => sum + parseFloat(c.amount), 0);
+
+                    // EV = Earned Value (baseado em % de tarefas concluídas)
+                    const filteredTasks = tasks.filter(t => t.projectId === activeProject.id);
+                    const totalTasks = filteredTasks.length;
+                    const completedTasks = filteredTasks.filter(t => t.status === 'done').length;
+                    const percentComplete = totalTasks > 0 ? (completedTasks / totalTasks) : 0;
+                    const EV = BAC * percentComplete;
+
+                    // PV = Planned Value (baseado no tempo decorrido)
+                    const startDate = new Date(activeProject.startDate || Date.now());
+                    const endDate = new Date(activeProject.endDate || Date.now());
+                    const now = Date.now();
+                    const totalDuration = endDate - startDate;
+                    const elapsedTime = now - startDate;
+                    const percentTime = totalDuration > 0 ? Math.min(Math.max(elapsedTime / totalDuration, 0), 1) : 0;
+                    const PV = BAC * percentTime;
+
+                    // Variâncias
+                    const SV = EV - PV; // Schedule Variance
+                    const CV = EV - AC; // Cost Variance
+
+                    // Índices
+                    const SPI = PV > 0 ? EV / PV : 0; // Schedule Performance Index
+                    const CPI = AC > 0 ? EV / AC : 0; // Cost Performance Index
+
+                    // Projeções
+                    const EAC = CPI > 0 ? BAC / CPI : BAC; // Estimate at Completion
+                    const ETC = EAC - AC; // Estimate to Complete
+                    const VAC = BAC - EAC; // Variance at Completion
+
+                    // Status
+                    const scheduleStatus = SPI >= 0.95 ? 'on-track' : SPI >= 0.85 ? 'attention' : 'delayed';
+                    const costStatus = CPI >= 0.95 ? 'on-budget' : CPI >= 0.85 ? 'attention' : 'over-budget';
+
+                    return {
+                        BAC, PV, EV, AC, SV, CV, SPI, CPI, EAC, ETC, VAC,
+                        percentComplete, percentTime, scheduleStatus, costStatus,
+                        totalTasks, completedTasks
+                    };
+                };
+
+                const analyzeEVMWithAI = async () => {
+                    if (!geminiApiKey) {
+                        addNotification('error', 'IA não configurada', 'Configure a chave API do Gemini primeiro');
+                        return;
+                    }
+
+                    const metrics = calculateEVM();
+                    if (!metrics) {
+                        addNotification('error', 'Sem projeto', 'Selecione um projeto primeiro');
+                        return;
+                    }
+
+                    if (metrics.totalTasks === 0) {
+                        addNotification('warning', 'Sem tarefas', 'Cadastre tarefas no projeto para análise EVM');
+                        return;
+                    }
+
+                    setAnalyzing(true);
+
+                    const prompt = `Você é um especialista em Earned Value Management (EVM) PMBOK 7.
+
+Métricas do Projeto:
+- BAC (Orçamento Total): R$ ${metrics.BAC.toLocaleString('pt-BR')}
+- PV (Valor Planejado): R$ ${metrics.PV.toLocaleString('pt-BR')}
+- EV (Valor Agregado): R$ ${metrics.EV.toLocaleString('pt-BR')}
+- AC (Custo Real): R$ ${metrics.AC.toLocaleString('pt-BR')}
+- SV (Variação Prazo): R$ ${metrics.SV.toLocaleString('pt-BR')}
+- CV (Variação Custo): R$ ${metrics.CV.toLocaleString('pt-BR')}
+- SPI (Índice Prazo): ${metrics.SPI.toFixed(2)}
+- CPI (Índice Custo): ${metrics.CPI.toFixed(2)}
+- % Trabalho Completo: ${(metrics.percentComplete * 100).toFixed(1)}%
+- % Tempo Decorrido: ${(metrics.percentTime * 100).toFixed(1)}%
+- EAC (Estimativa no Término): R$ ${metrics.EAC.toLocaleString('pt-BR')}
+- ETC (Estimativa para Completar): R$ ${metrics.ETC.toLocaleString('pt-BR')}
+- VAC (Variação no Término): R$ ${metrics.VAC.toLocaleString('pt-BR')}
+
+Interpretação:
+- SPI < 1.0 = Atrasado | SPI = 1.0 = No prazo | SPI > 1.0 = Adiantado
+- CPI < 1.0 = Acima do orçamento | CPI = 1.0 = No orçamento | CPI > 1.0 = Abaixo do orçamento
+
+Faça uma análise executiva completa e retorne APENAS um JSON válido (sem markdown, sem texto adicional):
+{
+  "statusGeral": "excelente" | "bom" | "atenção" | "crítico",
+  "statusPrazo": "adiantado" | "no-prazo" | "atrasado" | "muito-atrasado",
+  "statusCusto": "abaixo-orcamento" | "no-orcamento" | "acima-orcamento" | "muito-acima",
+  "interpretacaoSPI": "string (explicação do SPI)",
+  "interpretacaoCPI": "string (explicação do CPI)",
+  "tendenciaPrazo": "melhora" | "estável" | "piora",
+  "tendenciaCusto": "melhora" | "estável" | "piora",
+  "acoesPrazo": ["ação 1", "ação 2", "ação 3"],
+  "acoesCusto": ["ação 1", "ação 2", "ação 3"],
+  "riscosIdentificados": ["risco 1", "risco 2"],
+  "recomendacoesPrioritarias": ["recomendação 1", "recomendação 2", "recomendação 3"],
+  "previsaoTermino": "string (quando vai terminar baseado no SPI)",
+  "previsaoEstouro": "string (quanto vai estourar baseado no CPI)"
+}`;
+
+                    const result = await callGeminiAPI(prompt);
+                    setAnalyzing(false);
+
+                    if (result) {
+                        try {
+                            let cleanResult = result.trim();
+                            if (cleanResult.startsWith('```')) {
+                                cleanResult = cleanResult.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                            }
+                            const analysis = JSON.parse(cleanResult);
+                            setEvmAnalysis(analysis);
+                            setShowAnalysis(true);
+                            addNotification('success', 'Análise EVM Concluída', 'Análise gerada com IA');
+                        } catch (e) {
+                            console.error('Erro ao parsear análise EVM:', e);
+                            addNotification('error', 'Erro na análise', 'Não foi possível processar a resposta da IA');
+                        }
+                    }
+                };
+
+                const metrics = calculateEVM();
+
+                if (!activeProject) {
+                    return (
+                        <div className="p-6">
+                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                                <p className="text-yellow-800">⚠️ Selecione um projeto para ver a Análise de Valor Agregado (EVM)</p>
+                            </div>
+                        </div>
+                    );
+                }
+
+                if (!metrics || metrics.totalTasks === 0) {
+                    return (
+                        <div className="p-6">
+                            <h2 className="text-2xl font-bold mb-4">Análise de Valor Agregado (EVM)</h2>
+                            <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+                                <p className="text-blue-800">ℹ️ Cadastre tarefas e custos no projeto para calcular as métricas EVM</p>
+                            </div>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Análise de Valor Agregado (EVM)</h2>
+                                <p className="text-sm text-gray-600">Earned Value Management - PMBOK 7</p>
+                            </div>
+                            <button
+                                onClick={analyzeEVMWithAI}
+                                disabled={analyzing || !geminiApiKey}
+                                className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded hover:from-indigo-600 hover:to-purple-600 flex items-center gap-2 disabled:opacity-50"
+                            >
+                                {analyzing ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        Analisando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <i data-lucide="brain" className="w-4 h-4"></i>
+                                        Analisar com IA
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        {/* Métricas Principais */}
+                        <div className="grid md:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-white rounded-lg p-6 shadow border-l-4 border-blue-500">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-sm font-medium text-gray-600">BAC</p>
+                                    <i data-lucide="target" className="w-5 h-5 text-blue-500"></i>
+                                </div>
+                                <p className="text-2xl font-bold text-gray-900">R$ {metrics.BAC.toLocaleString('pt-BR')}</p>
+                                <p className="text-xs text-gray-500 mt-1">Orçamento Total</p>
+                            </div>
+
+                            <div className="bg-white rounded-lg p-6 shadow border-l-4 border-purple-500">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-sm font-medium text-gray-600">PV</p>
+                                    <i data-lucide="calendar" className="w-5 h-5 text-purple-500"></i>
+                                </div>
+                                <p className="text-2xl font-bold text-gray-900">R$ {metrics.PV.toLocaleString('pt-BR')}</p>
+                                <p className="text-xs text-gray-500 mt-1">Valor Planejado</p>
+                            </div>
+
+                            <div className="bg-white rounded-lg p-6 shadow border-l-4 border-green-500">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-sm font-medium text-gray-600">EV</p>
+                                    <i data-lucide="check-circle" className="w-5 h-5 text-green-500"></i>
+                                </div>
+                                <p className="text-2xl font-bold text-gray-900">R$ {metrics.EV.toLocaleString('pt-BR')}</p>
+                                <p className="text-xs text-gray-500 mt-1">Valor Agregado</p>
+                            </div>
+
+                            <div className="bg-white rounded-lg p-6 shadow border-l-4 border-orange-500">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-sm font-medium text-gray-600">AC</p>
+                                    <i data-lucide="dollar-sign" className="w-5 h-5 text-orange-500"></i>
+                                </div>
+                                <p className="text-2xl font-bold text-gray-900">R$ {metrics.AC.toLocaleString('pt-BR')}</p>
+                                <p className="text-xs text-gray-500 mt-1">Custo Real</p>
+                            </div>
+                        </div>
+
+                        {/* Indicadores de Desempenho */}
+                        <div className="grid md:grid-cols-2 gap-6 mb-6">
+                            <div className="bg-white rounded-lg p-6 shadow">
+                                <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                                    <i data-lucide="clock" className="w-5 h-5"></i>
+                                    Desempenho de Prazo
+                                </h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-sm font-medium">SPI (Schedule Performance Index)</span>
+                                            <span className={`text-2xl font-bold ${
+                                                metrics.SPI >= 1 ? 'text-green-600' : metrics.SPI >= 0.85 ? 'text-yellow-600' : 'text-red-600'
+                                            }`}>
+                                                {metrics.SPI.toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-3">
+                                            <div
+                                                className={`h-3 rounded-full ${
+                                                    metrics.SPI >= 1 ? 'bg-green-500' : metrics.SPI >= 0.85 ? 'bg-yellow-500' : 'bg-red-500'
+                                                }`}
+                                                style={{width: `${Math.min(metrics.SPI * 100, 100)}%`}}
+                                            ></div>
+                                        </div>
+                                        <p className="text-xs text-gray-600 mt-2">
+                                            {metrics.SPI >= 1 ? '✅ Projeto adiantado ou no prazo' :
+                                             metrics.SPI >= 0.85 ? '⚠️ Leve atraso no cronograma' :
+                                             '🚨 Atraso significativo no cronograma'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span>SV (Variação de Prazo)</span>
+                                            <span className={`font-bold ${metrics.SV >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                R$ {Math.abs(metrics.SV).toLocaleString('pt-BR')}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-500">
+                                            {metrics.SV >= 0 ? 'Adiantado' : 'Atrasado'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg p-6 shadow">
+                                <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                                    <i data-lucide="trending-up" className="w-5 h-5"></i>
+                                    Desempenho de Custo
+                                </h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-sm font-medium">CPI (Cost Performance Index)</span>
+                                            <span className={`text-2xl font-bold ${
+                                                metrics.CPI >= 1 ? 'text-green-600' : metrics.CPI >= 0.85 ? 'text-yellow-600' : 'text-red-600'
+                                            }`}>
+                                                {metrics.CPI.toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-3">
+                                            <div
+                                                className={`h-3 rounded-full ${
+                                                    metrics.CPI >= 1 ? 'bg-green-500' : metrics.CPI >= 0.85 ? 'bg-yellow-500' : 'bg-red-500'
+                                                }`}
+                                                style={{width: `${Math.min(metrics.CPI * 100, 100)}%`}}
+                                            ></div>
+                                        </div>
+                                        <p className="text-xs text-gray-600 mt-2">
+                                            {metrics.CPI >= 1 ? '✅ Projeto abaixo ou dentro do orçamento' :
+                                             metrics.CPI >= 0.85 ? '⚠️ Leve desvio no orçamento' :
+                                             '🚨 Estouro significativo no orçamento'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span>CV (Variação de Custo)</span>
+                                            <span className={`font-bold ${metrics.CV >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                R$ {Math.abs(metrics.CV).toLocaleString('pt-BR')}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-500">
+                                            {metrics.CV >= 0 ? 'Economia' : 'Estouro'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Projeções */}
+                        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-6 shadow mb-6">
+                            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                                <i data-lucide="trending-up" className="w-5 h-5"></i>
+                                Projeções para o Término
+                            </h3>
+                            <div className="grid md:grid-cols-3 gap-4">
+                                <div className="bg-white rounded p-4">
+                                    <p className="text-sm text-gray-600 mb-1">EAC - Estimativa no Término</p>
+                                    <p className={`text-xl font-bold ${metrics.EAC > metrics.BAC ? 'text-red-600' : 'text-green-600'}`}>
+                                        R$ {metrics.EAC.toLocaleString('pt-BR')}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {metrics.EAC > metrics.BAC ? `+${((metrics.EAC / metrics.BAC - 1) * 100).toFixed(1)}% do orçamento` :
+                                         `${((1 - metrics.EAC / metrics.BAC) * 100).toFixed(1)}% de economia`}
+                                    </p>
+                                </div>
+                                <div className="bg-white rounded p-4">
+                                    <p className="text-sm text-gray-600 mb-1">ETC - Estimativa para Completar</p>
+                                    <p className="text-xl font-bold text-indigo-600">R$ {metrics.ETC.toLocaleString('pt-BR')}</p>
+                                    <p className="text-xs text-gray-500 mt-1">Falta gastar</p>
+                                </div>
+                                <div className="bg-white rounded p-4">
+                                    <p className="text-sm text-gray-600 mb-1">VAC - Variação no Término</p>
+                                    <p className={`text-xl font-bold ${metrics.VAC >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        R$ {Math.abs(metrics.VAC).toLocaleString('pt-BR')}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {metrics.VAC >= 0 ? 'Economia projetada' : 'Estouro projetado'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Progresso */}
+                        <div className="bg-white rounded-lg p-6 shadow mb-6">
+                            <h3 className="font-bold text-lg mb-4">Progresso do Projeto</h3>
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <div className="flex justify-between text-sm mb-2">
+                                        <span>Trabalho Completo</span>
+                                        <span className="font-bold">{(metrics.percentComplete * 100).toFixed(1)}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-4">
+                                        <div className="bg-green-500 h-4 rounded-full" style={{width: `${metrics.percentComplete * 100}%`}}></div>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">{metrics.completedTasks} de {metrics.totalTasks} tarefas concluídas</p>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-sm mb-2">
+                                        <span>Tempo Decorrido</span>
+                                        <span className="font-bold">{(metrics.percentTime * 100).toFixed(1)}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-4">
+                                        <div className="bg-blue-500 h-4 rounded-full" style={{width: `${metrics.percentTime * 100}%`}}></div>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">Do prazo total do projeto</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Análise da IA */}
+                        {showAnalysis && evmAnalysis && (
+                            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex-shrink-0">
+                                        <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
+                                            <i data-lucide="brain" className="w-8 h-8 text-white"></i>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                            <span>Análise Inteligente EVM</span>
+                                            <span className={`px-3 py-1 rounded text-sm ${
+                                                evmAnalysis.statusGeral === 'excelente' ? 'bg-green-100 text-green-700' :
+                                                evmAnalysis.statusGeral === 'bom' ? 'bg-blue-100 text-blue-700' :
+                                                evmAnalysis.statusGeral === 'atenção' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                                            }`}>
+                                                {evmAnalysis.statusGeral.toUpperCase()}
+                                            </span>
+                                        </h3>
+
+                                        <div className="grid md:grid-cols-2 gap-4 mb-4">
+                                            <div className="bg-white rounded p-4">
+                                                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                                                    <i data-lucide="clock" className="w-4 h-4"></i>
+                                                    Status de Prazo
+                                                </h4>
+                                                <p className="text-sm mb-2">{evmAnalysis.interpretacaoSPI}</p>
+                                                <p className="text-xs text-gray-600"><strong>Previsão:</strong> {evmAnalysis.previsaoTermino}</p>
+                                            </div>
+                                            <div className="bg-white rounded p-4">
+                                                <h4 className="font-semibold mb-2 flex items-center gap-2">
+                                                    <i data-lucide="dollar-sign" className="w-4 h-4"></i>
+                                                    Status de Custo
+                                                </h4>
+                                                <p className="text-sm mb-2">{evmAnalysis.interpretacaoCPI}</p>
+                                                <p className="text-xs text-gray-600"><strong>Previsão:</strong> {evmAnalysis.previsaoEstouro}</p>
+                                            </div>
+                                        </div>
+
+                                        {evmAnalysis.riscosIdentificados && evmAnalysis.riscosIdentificados.length > 0 && (
+                                            <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+                                                <h4 className="font-bold text-red-800 mb-2 flex items-center gap-2">
+                                                    <i data-lucide="alert-triangle" className="w-5 h-5"></i>
+                                                    Riscos Identificados
+                                                </h4>
+                                                <ul className="text-sm text-red-700 space-y-1">
+                                                    {evmAnalysis.riscosIdentificados.map((risco, i) => (
+                                                        <li key={i}>⚠️ {risco}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        <div className="grid md:grid-cols-3 gap-4">
+                                            <div>
+                                                <h4 className="font-bold mb-2 text-sm flex items-center gap-1">
+                                                    <i data-lucide="clock" className="w-4 h-4"></i>
+                                                    Ações - Prazo
+                                                </h4>
+                                                <ul className="text-xs space-y-1">
+                                                    {evmAnalysis.acoesPrazo?.map((acao, i) => (
+                                                        <li key={i} className="flex items-start gap-1">
+                                                            <span className="text-blue-500">▸</span>
+                                                            <span>{acao}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold mb-2 text-sm flex items-center gap-1">
+                                                    <i data-lucide="dollar-sign" className="w-4 h-4"></i>
+                                                    Ações - Custo
+                                                </h4>
+                                                <ul className="text-xs space-y-1">
+                                                    {evmAnalysis.acoesCusto?.map((acao, i) => (
+                                                        <li key={i} className="flex items-start gap-1">
+                                                            <span className="text-orange-500">▸</span>
+                                                            <span>{acao}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold mb-2 text-sm flex items-center gap-1">
+                                                    <i data-lucide="lightbulb" className="w-4 h-4"></i>
+                                                    Recomendações
+                                                </h4>
+                                                <ul className="text-xs space-y-1">
+                                                    {evmAnalysis.recomendacoesPrioritarias?.map((rec, i) => (
+                                                        <li key={i} className="flex items-start gap-1">
+                                                            <span className="text-green-500">✓</span>
+                                                            <span>{rec}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Legenda */}
+                        <div className="bg-gray-50 rounded-lg p-4 mt-6">
+                            <h4 className="font-bold text-sm mb-2">📚 Glossário EVM</h4>
+                            <div className="grid md:grid-cols-2 gap-2 text-xs text-gray-700">
+                                <div><strong>BAC:</strong> Budget at Completion - Orçamento total do projeto</div>
+                                <div><strong>PV:</strong> Planned Value - Quanto deveria ter sido gasto até agora</div>
+                                <div><strong>EV:</strong> Earned Value - Valor do trabalho realmente completado</div>
+                                <div><strong>AC:</strong> Actual Cost - Quanto foi realmente gasto</div>
+                                <div><strong>SPI:</strong> Schedule Performance Index - Eficiência do cronograma</div>
+                                <div><strong>CPI:</strong> Cost Performance Index - Eficiência dos custos</div>
+                                <div><strong>EAC:</strong> Estimate at Completion - Custo projetado final</div>
+                                <div><strong>VAC:</strong> Variance at Completion - Diferença entre BAC e EAC</div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
             // Módulo de Configuração de IA
             const AISettingsModule = () => {
                 const [apiKeyInput, setApiKeyInput] = useState(geminiApiKey);
@@ -3507,6 +4005,7 @@ Faça uma análise preditiva completa e retorne APENAS um JSON válido (sem mark
                     { id: 'deliverables', name: 'Entregas', icon: 'package' },
                     { id: 'communications', name: 'Comunicações', icon: 'message-square' },
                     { id: 'lessons-learned', name: 'Lições Aprendidas', icon: 'lightbulb' },
+                    { id: 'earned-value', name: 'Análise Valor Agregado (EVM)', icon: 'bar-chart-2' },
                     { id: 'risks', name: 'Riscos', icon: 'alert-triangle' },
                     { id: 'stakeholders', name: 'Stakeholders', icon: 'users' },
                     { id: 'reports', name: 'Relatórios', icon: 'file-text' },
@@ -3686,6 +4185,7 @@ Faça uma análise preditiva completa e retorne APENAS um JSON válido (sem mark
                                 {activeView === 'tasks' && <TasksKanban />}
                                 {activeView === 'wbs' && <WBSModule />}
                                 {activeView === 'lessons-learned' && <LessonsLearnedModule />}
+                                {activeView === 'earned-value' && <EarnedValueModule />}
                                 {activeView === 'deliverables' && <DeliverablesModule />}
                                 {activeView === 'communications' && <CommunicationsModule />}
                                 {activeView === 'project-charter' && <ProjectCharterModule />}
