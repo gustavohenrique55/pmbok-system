@@ -4216,6 +4216,347 @@ Faça uma análise executiva completa e retorne APENAS um JSON válido (sem mark
                 );
             };
 
+            // Módulo de Abordagem de Desenvolvimento e Ciclo de Vida (PMBOK 7 - 8º Domínio)
+            const LifecycleModule = () => {
+                const [approach, setApproach] = useState(activeProject?.approach || 'hybrid');
+                const [phases, setPhases] = useState(activeProject?.phases || []);
+                const [showPhaseForm, setShowPhaseForm] = useState(false);
+                const [phaseData, setPhaseData] = useState({
+                    name: '',
+                    description: '',
+                    startDate: '',
+                    endDate: '',
+                    deliverables: '',
+                    gate: ''
+                });
+
+                const approaches = [
+                    { id: 'predictive', name: 'Preditiva (Cascata)', icon: 'trending-down', description: 'Planejamento completo no início, execução sequencial' },
+                    { id: 'agile', name: 'Ágil', icon: 'zap', description: 'Entregas incrementais e iterativas, adaptação contínua' },
+                    { id: 'hybrid', name: 'Híbrida', icon: 'git-merge', description: 'Combinação de abordagens preditivas e ágeis' },
+                    { id: 'adaptive', name: 'Adaptativa', icon: 'shuffle', description: 'Alta incerteza, experimentação e aprendizado contínuo' }
+                ];
+
+                const saveApproach = (newApproach) => {
+                    setApproach(newApproach);
+                    if (activeProject) {
+                        const updatedProjects = projects.map(p =>
+                            p.id === activeProject.id ? { ...p, approach: newApproach } : p
+                        );
+                        setProjects(updatedProjects);
+                        setActiveProject({ ...activeProject, approach: newApproach });
+                        addNotification('success', 'Abordagem Atualizada', `Abordagem definida como ${approaches.find(a => a.id === newApproach)?.name}`);
+                    }
+                };
+
+                const addPhase = (e) => {
+                    e.preventDefault();
+                    const newPhase = {
+                        ...phaseData,
+                        id: Date.now(),
+                        projectId: activeProject.id,
+                        status: 'planned'
+                    };
+
+                    const updatedPhases = [...phases, newPhase];
+                    setPhases(updatedPhases);
+
+                    const updatedProjects = projects.map(p =>
+                        p.id === activeProject.id ? { ...p, phases: updatedPhases } : p
+                    );
+                    setProjects(updatedProjects);
+
+                    setPhaseData({
+                        name: '',
+                        description: '',
+                        startDate: '',
+                        endDate: '',
+                        deliverables: '',
+                        gate: ''
+                    });
+                    setShowPhaseForm(false);
+                    addNotification('success', 'Fase Adicionada', 'Nova fase do ciclo de vida criada!');
+                };
+
+                const removePhase = (id) => {
+                    if (confirm('Remover esta fase?')) {
+                        const updatedPhases = phases.filter(p => p.id !== id);
+                        setPhases(updatedPhases);
+
+                        const updatedProjects = projects.map(p =>
+                            p.id === activeProject.id ? { ...p, phases: updatedPhases } : p
+                        );
+                        setProjects(updatedProjects);
+
+                        addNotification('info', 'Fase Removida', 'Fase removida do ciclo de vida');
+                    }
+                };
+
+                const updatePhaseStatus = (id, newStatus) => {
+                    const updatedPhases = phases.map(p =>
+                        p.id === id ? { ...p, status: newStatus } : p
+                    );
+                    setPhases(updatedPhases);
+
+                    const updatedProjects = projects.map(p =>
+                        p.id === activeProject.id ? { ...p, phases: updatedPhases } : p
+                    );
+                    setProjects(updatedProjects);
+                };
+
+                return (
+                    <div className="p-6">
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <div className="mb-6">
+                                <h2 className="text-2xl font-bold flex items-center gap-2">
+                                    <i data-lucide="git-branch" className="w-6 h-6"></i>
+                                    Abordagem de Desenvolvimento e Ciclo de Vida
+                                </h2>
+                                <p className="text-gray-600 mt-1">8º Domínio de Desempenho PMBOK 7</p>
+                            </div>
+
+                            {!activeProject ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    <i data-lucide="folder" className="w-16 h-16 mx-auto mb-4 opacity-50"></i>
+                                    <p>Selecione um projeto para configurar o ciclo de vida</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Seleção de Abordagem */}
+                                    <div className="mb-8">
+                                        <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                                            <i data-lucide="compass" className="w-5 h-5"></i>
+                                            Abordagem de Desenvolvimento
+                                        </h3>
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            {approaches.map((app) => (
+                                                <div
+                                                    key={app.id}
+                                                    onClick={() => saveApproach(app.id)}
+                                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
+                                                        approach === app.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                                            approach === app.id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+                                                        }`}>
+                                                            <i data-lucide={app.icon} className="w-5 h-5"></i>
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <h4 className="font-bold">{app.name}</h4>
+                                                            {approach === app.id && (
+                                                                <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded">Selecionada</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-sm text-gray-600">{app.description}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Fases do Ciclo de Vida */}
+                                    <div>
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                                <i data-lucide="layers" className="w-5 h-5"></i>
+                                                Fases do Ciclo de Vida
+                                            </h3>
+                                            <button
+                                                onClick={() => setShowPhaseForm(!showPhaseForm)}
+                                                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center gap-2"
+                                            >
+                                                <i data-lucide="plus" className="w-4 h-4"></i>
+                                                Nova Fase
+                                            </button>
+                                        </div>
+
+                                        {/* Formulário de Nova Fase */}
+                                        {showPhaseForm && (
+                                            <form onSubmit={addPhase} className="bg-blue-50 rounded-lg p-6 mb-6">
+                                                <h4 className="font-bold mb-4">Nova Fase do Projeto</h4>
+                                                <div className="grid md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium mb-1">Nome da Fase *</label>
+                                                        <input
+                                                            type="text"
+                                                            required
+                                                            value={phaseData.name}
+                                                            onChange={(e) => setPhaseData({...phaseData, name: e.target.value})}
+                                                            className="w-full border rounded px-3 py-2"
+                                                            placeholder="Ex: Iniciação, Planejamento, Execução..."
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium mb-1">Gate/Marco</label>
+                                                        <input
+                                                            type="text"
+                                                            value={phaseData.gate}
+                                                            onChange={(e) => setPhaseData({...phaseData, gate: e.target.value})}
+                                                            className="w-full border rounded px-3 py-2"
+                                                            placeholder="Ex: Aprovação do Business Case"
+                                                        />
+                                                    </div>
+                                                    <div className="md:col-span-2">
+                                                        <label className="block text-sm font-medium mb-1">Descrição</label>
+                                                        <textarea
+                                                            value={phaseData.description}
+                                                            onChange={(e) => setPhaseData({...phaseData, description: e.target.value})}
+                                                            className="w-full border rounded px-3 py-2"
+                                                            rows="2"
+                                                            placeholder="Objetivo e atividades principais desta fase"
+                                                        ></textarea>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium mb-1">Data Início</label>
+                                                        <input
+                                                            type="date"
+                                                            value={phaseData.startDate}
+                                                            onChange={(e) => setPhaseData({...phaseData, startDate: e.target.value})}
+                                                            className="w-full border rounded px-3 py-2"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium mb-1">Data Fim</label>
+                                                        <input
+                                                            type="date"
+                                                            value={phaseData.endDate}
+                                                            onChange={(e) => setPhaseData({...phaseData, endDate: e.target.value})}
+                                                            className="w-full border rounded px-3 py-2"
+                                                        />
+                                                    </div>
+                                                    <div className="md:col-span-2">
+                                                        <label className="block text-sm font-medium mb-1">Entregas Principais</label>
+                                                        <input
+                                                            type="text"
+                                                            value={phaseData.deliverables}
+                                                            onChange={(e) => setPhaseData({...phaseData, deliverables: e.target.value})}
+                                                            className="w-full border rounded px-3 py-2"
+                                                            placeholder="Ex: Documento de Requisitos, Protótipo, Produto Final"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2 mt-4">
+                                                    <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                                                        Adicionar Fase
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowPhaseForm(false)}
+                                                        className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
+                                                    >
+                                                        Cancelar
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        )}
+
+                                        {/* Timeline de Fases */}
+                                        <div className="space-y-4">
+                                            {phases.length === 0 ? (
+                                                <div className="text-center py-12 text-gray-500">
+                                                    <i data-lucide="list-tree" className="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                                                    <p>Nenhuma fase definida ainda</p>
+                                                    <p className="text-sm mt-2">Comece adicionando as fases do seu projeto</p>
+                                                </div>
+                                            ) : (
+                                                <div className="relative">
+                                                    {/* Linha vertical da timeline */}
+                                                    <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-300"></div>
+
+                                                    {phases.map((phase, index) => (
+                                                        <div key={phase.id} className="relative pl-16 pb-8">
+                                                            {/* Bolinha da timeline */}
+                                                            <div className={`absolute left-3 w-6 h-6 rounded-full border-4 ${
+                                                                phase.status === 'completed' ? 'bg-green-500 border-green-200' :
+                                                                phase.status === 'in-progress' ? 'bg-blue-500 border-blue-200' :
+                                                                'bg-gray-400 border-gray-200'
+                                                            }`}></div>
+
+                                                            {/* Conteúdo da fase */}
+                                                            <div className="border rounded-lg p-4 bg-white shadow hover:shadow-md transition-shadow">
+                                                                <div className="flex justify-between items-start mb-3">
+                                                                    <div className="flex-1">
+                                                                        <div className="flex items-center gap-3 mb-2">
+                                                                            <h4 className="font-bold text-lg">{phase.name}</h4>
+                                                                            <select
+                                                                                value={phase.status}
+                                                                                onChange={(e) => updatePhaseStatus(phase.id, e.target.value)}
+                                                                                className="text-sm border rounded px-2 py-1"
+                                                                            >
+                                                                                <option value="planned">Planejada</option>
+                                                                                <option value="in-progress">Em Andamento</option>
+                                                                                <option value="completed">Concluída</option>
+                                                                            </select>
+                                                                        </div>
+                                                                        {phase.gate && (
+                                                                            <div className="flex items-center gap-2 text-sm text-purple-600 mb-2">
+                                                                                <i data-lucide="flag" className="w-4 h-4"></i>
+                                                                                <span className="font-semibold">Gate:</span> {phase.gate}
+                                                                            </div>
+                                                                        )}
+                                                                        {phase.description && (
+                                                                            <p className="text-sm text-gray-600 mb-3">{phase.description}</p>
+                                                                        )}
+                                                                        <div className="grid md:grid-cols-2 gap-3 text-sm">
+                                                                            {phase.startDate && (
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <i data-lucide="calendar-check" className="w-4 h-4 text-gray-400"></i>
+                                                                                    <span>Início: {new Date(phase.startDate).toLocaleDateString('pt-BR')}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {phase.endDate && (
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <i data-lucide="calendar-x" className="w-4 h-4 text-gray-400"></i>
+                                                                                    <span>Fim: {new Date(phase.endDate).toLocaleDateString('pt-BR')}</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        {phase.deliverables && (
+                                                                            <div className="mt-3">
+                                                                                <span className="text-sm font-semibold text-gray-600">Entregas: </span>
+                                                                                <span className="text-sm text-gray-700">{phase.deliverables}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => removePhase(phase.id)}
+                                                                        className="text-red-500 hover:text-red-700 p-2"
+                                                                    >
+                                                                        <i data-lucide="trash-2" className="w-5 h-5"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Informações sobre PMBOK 7 */}
+                                        <div className="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4">
+                                            <h4 className="font-bold text-sm mb-2 flex items-center gap-2">
+                                                <i data-lucide="info" className="w-4 h-4"></i>
+                                                Sobre este Domínio (PMBOK 7)
+                                            </h4>
+                                            <p className="text-sm text-gray-700 mb-2">
+                                                O domínio de <strong>Abordagem de Desenvolvimento e Ciclo de Vida</strong> trata de estabelecer
+                                                a abordagem adequada, a cadência e as fases do ciclo de vida do projeto.
+                                            </p>
+                                            <div className="text-sm text-gray-700">
+                                                <strong>Considera:</strong> Tipo de produto, complexidade, incerteza, requisitos de entrega,
+                                                capacidade organizacional e maturidade do time.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+
             // Módulo de Configuração de IA
             const AISettingsModule = () => {
                 const [apiKeyInput, setApiKeyInput] = useState(geminiApiKey);
@@ -4511,9 +4852,12 @@ Faça uma análise executiva completa e retorne APENAS um JSON válido (sem mark
                 const menuItems = [
                     { id: 'dashboard', name: t('dashboard'), icon: 'layout-dashboard' },
                     { id: 'projects', name: t('projects'), icon: 'folder' },
-                    { id: 'divider-pmbok', name: '─── PMBOK 7 ───', icon: null, disabled: true },
+                    { id: 'divider-pmbok', name: '─── PMBOK 7 - 8 Domínios ───', icon: null, disabled: true },
                     { id: 'project-charter', name: 'Project Charter', icon: 'file-badge' },
+                    { id: 'lifecycle', name: 'Ciclo de Vida', icon: 'git-branch' },
                     { id: 'tasks', name: 'Tarefas Kanban', icon: 'check-square' },
+                    { id: 'gantt-chart', name: 'Timeline/Gantt', icon: 'gantt-chart' },
+                    { id: 'team-management', name: 'Gestão de Equipe', icon: 'users-round' },
                     { id: 'wbs', name: 'WBS', icon: 'network' },
                     { id: 'deliverables', name: 'Entregas', icon: 'package' },
                     { id: 'communications', name: 'Comunicações', icon: 'message-square' },
@@ -4695,7 +5039,10 @@ Faça uma análise executiva completa e retorne APENAS um JSON válido (sem mark
                                         </div>
                                     </div>
                                 )}
+                                {activeView === 'lifecycle' && <LifecycleModule />}
                                 {activeView === 'tasks' && <TasksKanban />}
+                                {activeView === 'gantt-chart' && <GanttChartModule />}
+                                {activeView === 'team-management' && <TeamManagementModule />}
                                 {activeView === 'wbs' && <WBSModule />}
                                 {activeView === 'lessons-learned' && <LessonsLearnedModule />}
                                 {activeView === 'earned-value' && <EarnedValueModule />}
