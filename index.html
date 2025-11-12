@@ -49,11 +49,25 @@
             const [resources, setResources] = useState([]);
             const [tasks, setTasks] = useState([]);
 
+            // Estados para ISO 9001
+            const [suppliers, setSuppliers] = useState([]);
+            const [audits, setAudits] = useState([]);
+            const [managementReviews, setManagementReviews] = useState([]);
+            const [qualityObjectives, setQualityObjectives] = useState([]);
+            const [meetingNotes, setMeetingNotes] = useState([]);
+
             // Estados para IA (Gemini)
             const [geminiApiKey, setGeminiApiKey] = useState('');
             const [aiChatHistory, setAiChatHistory] = useState([]);
             const [showAiChat, setShowAiChat] = useState(false);
             const [aiLoading, setAiLoading] = useState(false);
+
+            // Estados para customização
+            const [customTheme, setCustomTheme] = useState({
+                primary: '#3B82F6',
+                secondary: '#8B5CF6',
+                accent: '#10B981'
+            });
 
             // Traduções
             const translations = {
@@ -1857,6 +1871,1014 @@ Seja conciso, prático e profissional.`;
                 );
             };
 
+            // Módulo WBS (Work Breakdown Structure)
+            const WBSModule = () => {
+                const [wbsForm, setWbsForm] = useState({ id: '', name: '', parent: '', level: 1, deliverable: '', responsible: '', status: 'not_started' });
+                const [showWbsModal, setShowWbsModal] = useState(false);
+
+                const addWbsItem = () => {
+                    const newItem = { ...wbsForm, id: Date.now(), projectId: activeProject?.id };
+                    setWbs([...wbs, newItem]);
+                    setWbsForm({ id: '', name: '', parent: '', level: 1, deliverable: '', responsible: '', status: 'not_started' });
+                    setShowWbsModal(false);
+                    addNotification('success', 'WBS Item Criado', 'Item adicionado à estrutura analítica');
+                };
+
+                const filteredWbs = wbs.filter(item => !activeProject || item.projectId === activeProject.id);
+                const wbsTree = filteredWbs.filter(item => !item.parent);
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">WBS - Estrutura Analítica do Projeto</h2>
+                                <p className="text-sm text-gray-600">Work Breakdown Structure (PMBOK 7)</p>
+                            </div>
+                            <button onClick={() => setShowWbsModal(true)} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center gap-2">
+                                <i data-lucide="plus" className="w-4 h-4"></i> Novo Item WBS
+                            </button>
+                        </div>
+
+                        {filteredWbs.length === 0 ? (
+                            <div className="bg-white rounded-lg p-8 text-center">
+                                <i data-lucide="network" className="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                                <p className="text-gray-500">Nenhum item WBS criado</p>
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-lg p-6">
+                                {wbsTree.map(item => (
+                                    <div key={item.id} className="mb-4 p-4 border rounded-lg">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                                <h3 className="font-bold text-lg">{item.name}</h3>
+                                                <p className="text-sm text-gray-600 mt-1">Nível {item.level} | {item.deliverable}</p>
+                                                <p className="text-sm text-gray-500">Responsável: {item.responsible}</p>
+                                                <span className={`inline-block mt-2 px-2 py-1 text-xs rounded ${
+                                                    item.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                                    item.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'
+                                                }`}>
+                                                    {item.status === 'completed' ? 'Concluído' : item.status === 'in_progress' ? 'Em Progresso' : 'Não Iniciado'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {filteredWbs.filter(sub => sub.parent === item.id.toString()).map(subItem => (
+                                            <div key={subItem.id} className="ml-6 mt-3 p-3 border-l-2 border-blue-300 bg-blue-50">
+                                                <h4 className="font-semibold">{subItem.name}</h4>
+                                                <p className="text-xs text-gray-600">{subItem.deliverable}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {showWbsModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+                                    <h3 className="text-xl font-bold mb-4">Novo Item WBS</h3>
+                                    <div className="space-y-4">
+                                        <input placeholder="Nome do Item" className="w-full border rounded px-3 py-2" value={wbsForm.name} onChange={(e) => setWbsForm({ ...wbsForm, name: e.target.value })} />
+                                        <select className="w-full border rounded px-3 py-2" value={wbsForm.parent} onChange={(e) => setWbsForm({ ...wbsForm, parent: e.target.value })}>
+                                            <option value="">Item Raiz (Nível 1)</option>
+                                            {filteredWbs.filter(i => i.level === 1).map(item => (
+                                                <option key={item.id} value={item.id}>{item.name}</option>
+                                            ))}
+                                        </select>
+                                        <input placeholder="Entrega Associada" className="w-full border rounded px-3 py-2" value={wbsForm.deliverable} onChange={(e) => setWbsForm({ ...wbsForm, deliverable: e.target.value })} />
+                                        <input placeholder="Responsável" className="w-full border rounded px-3 py-2" value={wbsForm.responsible} onChange={(e) => setWbsForm({ ...wbsForm, responsible: e.target.value })} />
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button onClick={() => setShowWbsModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
+                                        <button onClick={addWbsItem} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Criar Item</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Módulo Lições Aprendidas
+            const LessonsLearnedModule = () => {
+                const [lessonForm, setLessonForm] = useState({ title: '', description: '', category: 'technical', phase: 'planning', impact: 'medium' });
+                const [showLessonModal, setShowLessonModal] = useState(false);
+
+                const addLesson = () => {
+                    const newLesson = { ...lessonForm, id: Date.now(), projectId: activeProject?.id, date: new Date().toISOString() };
+                    setLessons([...lessons, newLesson]);
+                    setLessonForm({ title: '', description: '', category: 'technical', phase: 'planning', impact: 'medium' });
+                    setShowLessonModal(false);
+                    addNotification('success', 'Lição Registrada', 'Lição aprendida salva com sucesso');
+                };
+
+                const filteredLessons = lessons.filter(l => !activeProject || l.projectId === activeProject.id);
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Lições Aprendidas</h2>
+                                <p className="text-sm text-gray-600">Registro de aprendizados do projeto (PMBOK 7)</p>
+                            </div>
+                            <button onClick={() => setShowLessonModal(true)} className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 flex items-center gap-2">
+                                <i data-lucide="lightbulb" className="w-4 h-4"></i> Nova Lição
+                            </button>
+                        </div>
+
+                        <div className="grid gap-4">
+                            {filteredLessons.map(lesson => (
+                                <div key={lesson.id} className="bg-white rounded-lg p-6 shadow">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <h3 className="font-bold text-lg">{lesson.title}</h3>
+                                        <div className="flex gap-2">
+                                            <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">{lesson.category}</span>
+                                            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">{lesson.phase}</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-gray-700 mb-3">{lesson.description}</p>
+                                    <div className="flex items-center justify-between text-sm text-gray-500">
+                                        <span>Impacto: {lesson.impact === 'high' ? 'Alto' : lesson.impact === 'medium' ? 'Médio' : 'Baixo'}</span>
+                                        <span>{new Date(lesson.date).toLocaleDateString('pt-BR')}</span>
+                                    </div>
+                                </div>
+                            ))}
+                            {filteredLessons.length === 0 && (
+                                <div className="bg-white rounded-lg p-8 text-center">
+                                    <i data-lucide="lightbulb" className="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                                    <p className="text-gray-500">Nenhuma lição aprendida registrada</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {showLessonModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+                                    <h3 className="text-xl font-bold mb-4">Registrar Lição Aprendida</h3>
+                                    <div className="space-y-4">
+                                        <input placeholder="Título da Lição" className="w-full border rounded px-3 py-2" value={lessonForm.title} onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })} />
+                                        <textarea placeholder="Descrição detalhada" className="w-full border rounded px-3 py-2" rows="4" value={lessonForm.description} onChange={(e) => setLessonForm({ ...lessonForm, description: e.target.value })} />
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">Categoria</label>
+                                                <select className="w-full border rounded px-3 py-2" value={lessonForm.category} onChange={(e) => setLessonForm({ ...lessonForm, category: e.target.value })}>
+                                                    <option value="technical">Técnico</option>
+                                                    <option value="management">Gestão</option>
+                                                    <option value="communication">Comunicação</option>
+                                                    <option value="team">Equipe</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">Fase</label>
+                                                <select className="w-full border rounded px-3 py-2" value={lessonForm.phase} onChange={(e) => setLessonForm({ ...lessonForm, phase: e.target.value })}>
+                                                    <option value="planning">Planejamento</option>
+                                                    <option value="execution">Execução</option>
+                                                    <option value="monitoring">Monitoramento</option>
+                                                    <option value="closing">Encerramento</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">Impacto</label>
+                                                <select className="w-full border rounded px-3 py-2" value={lessonForm.impact} onChange={(e) => setLessonForm({ ...lessonForm, impact: e.target.value })}>
+                                                    <option value="high">Alto</option>
+                                                    <option value="medium">Médio</option>
+                                                    <option value="low">Baixo</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button onClick={() => setShowLessonModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
+                                        <button onClick={addLesson} className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">Salvar Lição</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Módulo Gestão de Entregas (Deliverables)
+            const DeliverablesModule = () => {
+                const [delivForm, setDelivForm] = useState({ name: '', description: '', deadline: '', status: 'pending', responsible: '', type: 'document' });
+                const [showDelivModal, setShowDelivModal] = useState(false);
+
+                const addDeliverable = () => {
+                    const newDeliv = { ...delivForm, id: Date.now(), projectId: activeProject?.id, createdAt: new Date().toISOString() };
+                    setDeliverables([...deliverables, newDeliv]);
+                    setDelivForm({ name: '', description: '', deadline: '', status: 'pending', responsible: '', type: 'document' });
+                    setShowDelivModal(false);
+                    addNotification('success', 'Entrega Criada', 'Entregável adicionado ao projeto');
+                };
+
+                const filteredDeliverables = deliverables.filter(d => !activeProject || d.projectId === activeProject.id);
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Gestão de Entregas</h2>
+                                <p className="text-sm text-gray-600">Controle de deliverables do projeto</p>
+                            </div>
+                            <button onClick={() => setShowDelivModal(true)} className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center gap-2">
+                                <i data-lucide="package" className="w-4 h-4"></i> Nova Entrega
+                            </button>
+                        </div>
+
+                        <div className="grid gap-4">
+                            {filteredDeliverables.map(deliv => (
+                                <div key={deliv.id} className="bg-white rounded-lg p-6 shadow border-l-4" style={{borderLeftColor: deliv.status === 'completed' ? '#10B981' : deliv.status === 'in_progress' ? '#F59E0B' : '#6B7280'}}>
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <h3 className="font-bold text-lg">{deliv.name}</h3>
+                                            <p className="text-sm text-gray-600 mt-1">{deliv.description}</p>
+                                        </div>
+                                        <span className={`px-3 py-1 rounded text-sm font-medium ${
+                                            deliv.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                            deliv.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'
+                                        }`}>
+                                            {deliv.status === 'completed' ? 'Entregue' : deliv.status === 'in_progress' ? 'Em Andamento' : 'Pendente'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-600">Responsável: {deliv.responsible}</span>
+                                        <span className="text-gray-600">Prazo: {new Date(deliv.deadline).toLocaleDateString('pt-BR')}</span>
+                                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">{deliv.type}</span>
+                                    </div>
+                                </div>
+                            ))}
+                            {filteredDeliverables.length === 0 && (
+                                <div className="bg-white rounded-lg p-8 text-center">
+                                    <i data-lucide="package" className="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                                    <p className="text-gray-500">Nenhum entregável cadastrado</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {showDelivModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+                                    <h3 className="text-xl font-bold mb-4">Novo Entregável</h3>
+                                    <div className="space-y-4">
+                                        <input placeholder="Nome da Entrega" className="w-full border rounded px-3 py-2" value={delivForm.name} onChange={(e) => setDelivForm({ ...delivForm, name: e.target.value })} />
+                                        <textarea placeholder="Descrição" className="w-full border rounded px-3 py-2" rows="3" value={delivForm.description} onChange={(e) => setDelivForm({ ...delivForm, description: e.target.value })} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <input type="date" className="w-full border rounded px-3 py-2" value={delivForm.deadline} onChange={(e) => setDelivForm({ ...delivForm, deadline: e.target.value })} />
+                                            <input placeholder="Responsável" className="w-full border rounded px-3 py-2" value={delivForm.responsible} onChange={(e) => setDelivForm({ ...delivForm, responsible: e.target.value })} />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <select className="w-full border rounded px-3 py-2" value={delivForm.type} onChange={(e) => setDelivForm({ ...delivForm, type: e.target.value })}>
+                                                <option value="document">Documento</option>
+                                                <option value="software">Software</option>
+                                                <option value="report">Relatório</option>
+                                                <option value="presentation">Apresentação</option>
+                                                <option value="other">Outro</option>
+                                            </select>
+                                            <select className="w-full border rounded px-3 py-2" value={delivForm.status} onChange={(e) => setDelivForm({ ...delivForm, status: e.target.value })}>
+                                                <option value="pending">Pendente</option>
+                                                <option value="in_progress">Em Andamento</option>
+                                                <option value="completed">Entregue</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button onClick={() => setShowDelivModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
+                                        <button onClick={addDeliverable} className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Criar Entrega</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Módulo Gestão de Comunicações
+            const CommunicationsModule = () => {
+                const [commForm, setCommForm] = useState({ title: '', type: 'email', frequency: 'weekly', audience: '', channel: '', responsible: '' });
+                const [showCommModal, setShowCommModal] = useState(false);
+
+                const addCommunication = () => {
+                    const newComm = { ...commForm, id: Date.now(), projectId: activeProject?.id };
+                    setCommunications([...communications, newComm]);
+                    setCommForm({ title: '', type: 'email', frequency: 'weekly', audience: '', channel: '', responsible: '' });
+                    setShowCommModal(false);
+                    addNotification('success', 'Comunicação Registrada', 'Plano de comunicação atualizado');
+                };
+
+                const filteredComms = communications.filter(c => !activeProject || c.projectId === activeProject.id);
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Gestão de Comunicações</h2>
+                                <p className="text-sm text-gray-600">Plano de comunicação do projeto (PMBOK 7)</p>
+                            </div>
+                            <button onClick={() => setShowCommModal(true)} className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 flex items-center gap-2">
+                                <i data-lucide="message-square" className="w-4 h-4"></i> Nova Comunicação
+                            </button>
+                        </div>
+
+                        <div className="grid gap-4">
+                            {filteredComms.map(comm => (
+                                <div key={comm.id} className="bg-white rounded-lg p-6 shadow">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex-1">
+                                            <h3 className="font-bold text-lg">{comm.title}</h3>
+                                            <div className="flex gap-3 mt-2">
+                                                <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs">{comm.type}</span>
+                                                <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">{comm.frequency}</span>
+                                                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">{comm.channel}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 mt-3">
+                                        <div>Público: {comm.audience}</div>
+                                        <div>Responsável: {comm.responsible}</div>
+                                    </div>
+                                </div>
+                            ))}
+                            {filteredComms.length === 0 && (
+                                <div className="bg-white rounded-lg p-8 text-center">
+                                    <i data-lucide="message-square" className="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                                    <p className="text-gray-500">Nenhum plano de comunicação definido</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {showCommModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+                                    <h3 className="text-xl font-bold mb-4">Nova Comunicação</h3>
+                                    <div className="space-y-4">
+                                        <input placeholder="Título/Assunto" className="w-full border rounded px-3 py-2" value={commForm.title} onChange={(e) => setCommForm({ ...commForm, title: e.target.value })} />
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <select className="w-full border rounded px-3 py-2" value={commForm.type} onChange={(e) => setCommForm({ ...commForm, type: e.target.value })}>
+                                                <option value="email">E-mail</option>
+                                                <option value="meeting">Reunião</option>
+                                                <option value="report">Relatório</option>
+                                                <option value="presentation">Apresentação</option>
+                                            </select>
+                                            <select className="w-full border rounded px-3 py-2" value={commForm.frequency} onChange={(e) => setCommForm({ ...commForm, frequency: e.target.value })}>
+                                                <option value="daily">Diária</option>
+                                                <option value="weekly">Semanal</option>
+                                                <option value="biweekly">Quinzenal</option>
+                                                <option value="monthly">Mensal</option>
+                                            </select>
+                                            <input placeholder="Canal" className="w-full border rounded px-3 py-2" value={commForm.channel} onChange={(e) => setCommForm({ ...commForm, channel: e.target.value })} />
+                                        </div>
+                                        <input placeholder="Público-alvo" className="w-full border rounded px-3 py-2" value={commForm.audience} onChange={(e) => setCommForm({ ...commForm, audience: e.target.value })} />
+                                        <input placeholder="Responsável" className="w-full border rounded px-3 py-2" value={commForm.responsible} onChange={(e) => setCommForm({ ...commForm, responsible: e.target.value })} />
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button onClick={() => setShowCommModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
+                                        <button onClick={addCommunication} className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">Salvar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Módulo Project Charter
+            const ProjectCharterModule = () => {
+                const [charter, setCharter] = useState(() => {
+                    const saved = localStorage.getItem('projectCharters');
+                    return saved ? JSON.parse(saved) : [];
+                });
+                const [charterForm, setCharterForm] = useState({
+                    projectName: '', purpose: '', objectives: '', scope: '', deliverables: '',
+                    constraints: '', assumptions: '', budget: '', stakeholders: '', approver: ''
+                });
+                const [showCharterModal, setShowCharterModal] = useState(false);
+
+                const addCharter = () => {
+                    const newCharter = { ...charterForm, id: Date.now(), projectId: activeProject?.id, createdAt: new Date().toISOString() };
+                    const updated = [...charter, newCharter];
+                    setCharter(updated);
+                    localStorage.setItem('projectCharters', JSON.stringify(updated));
+                    setCharterForm({ projectName: '', purpose: '', objectives: '', scope: '', deliverables: '', constraints: '', assumptions: '', budget: '', stakeholders: '', approver: '' });
+                    setShowCharterModal(false);
+                    addNotification('success', 'Charter Criado', 'Termo de Abertura do Projeto criado');
+                };
+
+                const filteredCharters = charter.filter(c => !activeProject || c.projectId === activeProject.id);
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Project Charter</h2>
+                                <p className="text-sm text-gray-600">Termo de Abertura do Projeto (PMBOK 7)</p>
+                            </div>
+                            <button onClick={() => setShowCharterModal(true)} className="px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600 flex items-center gap-2">
+                                <i data-lucide="file-badge" className="w-4 h-4"></i> Novo Charter
+                            </button>
+                        </div>
+
+                        {filteredCharters.length === 0 ? (
+                            <div className="bg-white rounded-lg p-8 text-center">
+                                <i data-lucide="file-badge" className="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                                <p className="text-gray-500">Nenhum Project Charter criado</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {filteredCharters.map(ch => (
+                                    <div key={ch.id} className="bg-white rounded-lg p-6 shadow">
+                                        <h3 className="text-xl font-bold mb-4">{ch.projectName}</h3>
+                                        <div className="grid gap-4">
+                                            <div><strong>Propósito:</strong> <p className="text-gray-700">{ch.purpose}</p></div>
+                                            <div><strong>Objetivos:</strong> <p className="text-gray-700">{ch.objectives}</p></div>
+                                            <div><strong>Escopo:</strong> <p className="text-gray-700">{ch.scope}</p></div>
+                                            <div><strong>Entregas Principais:</strong> <p className="text-gray-700">{ch.deliverables}</p></div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><strong>Orçamento:</strong> <p className="text-gray-700">{ch.budget}</p></div>
+                                                <div><strong>Aprovador:</strong> <p className="text-gray-700">{ch.approver}</p></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {showCharterModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+                                <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 my-8">
+                                    <h3 className="text-xl font-bold mb-4">Criar Project Charter</h3>
+                                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                                        <input placeholder="Nome do Projeto" className="w-full border rounded px-3 py-2" value={charterForm.projectName} onChange={(e) => setCharterForm({ ...charterForm, projectName: e.target.value })} />
+                                        <textarea placeholder="Propósito do Projeto" className="w-full border rounded px-3 py-2" rows="2" value={charterForm.purpose} onChange={(e) => setCharterForm({ ...charterForm, purpose: e.target.value })} />
+                                        <textarea placeholder="Objetivos" className="w-full border rounded px-3 py-2" rows="2" value={charterForm.objectives} onChange={(e) => setCharterForm({ ...charterForm, objectives: e.target.value })} />
+                                        <textarea placeholder="Escopo" className="w-full border rounded px-3 py-2" rows="2" value={charterForm.scope} onChange={(e) => setCharterForm({ ...charterForm, scope: e.target.value })} />
+                                        <textarea placeholder="Entregas Principais" className="w-full border rounded px-3 py-2" rows="2" value={charterForm.deliverables} onChange={(e) => setCharterForm({ ...charterForm, deliverables: e.target.value })} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <input placeholder="Orçamento Estimado" className="w-full border rounded px-3 py-2" value={charterForm.budget} onChange={(e) => setCharterForm({ ...charterForm, budget: e.target.value })} />
+                                            <input placeholder="Aprovador/Patrocinador" className="w-full border rounded px-3 py-2" value={charterForm.approver} onChange={(e) => setCharterForm({ ...charterForm, approver: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button onClick={() => setShowCharterModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
+                                        <button onClick={addCharter} className="px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600">Criar Charter</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Módulo ISO: Objetivos da Qualidade (ISO 6.2)
+            const QualityObjectivesModule = () => {
+                const [objForm, setObjForm] = useState({ objective: '', indicator: '', target: '', responsible: '', deadline: '', status: 'active' });
+                const [showObjModal, setShowObjModal] = useState(false);
+
+                const addObjective = () => {
+                    const newObj = { ...objForm, id: Date.now(), projectId: activeProject?.id };
+                    setQualityObjectives([...qualityObjectives, newObj]);
+                    setObjForm({ objective: '', indicator: '', target: '', responsible: '', deadline: '', status: 'active' });
+                    setShowObjModal(false);
+                    addNotification('success', 'Objetivo Criado', 'Objetivo da qualidade registrado (ISO 6.2)');
+                };
+
+                const filteredObjectives = qualityObjectives.filter(o => !activeProject || o.projectId === activeProject.id);
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Objetivos da Qualidade</h2>
+                                <p className="text-sm text-gray-600">ISO 9001:2015 - Cláusula 6.2</p>
+                            </div>
+                            <button onClick={() => setShowObjModal(true)} className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 flex items-center gap-2">
+                                <i data-lucide="target" className="w-4 h-4"></i> Novo Objetivo
+                            </button>
+                        </div>
+
+                        <div className="grid gap-4">
+                            {filteredObjectives.map(obj => (
+                                <div key={obj.id} className="bg-white rounded-lg p-6 shadow border-l-4 border-emerald-500">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <h3 className="font-bold text-lg">{obj.objective}</h3>
+                                        <span className={`px-2 py-1 rounded text-xs ${obj.status === 'achieved' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                            {obj.status === 'achieved' ? 'Alcançado' : 'Ativo'}
+                                        </span>
+                                    </div>
+                                    <div className="grid gap-2 text-sm">
+                                        <div><strong>Indicador:</strong> {obj.indicator}</div>
+                                        <div><strong>Meta:</strong> {obj.target}</div>
+                                        <div><strong>Responsável:</strong> {obj.responsible}</div>
+                                        <div><strong>Prazo:</strong> {new Date(obj.deadline).toLocaleDateString('pt-BR')}</div>
+                                    </div>
+                                </div>
+                            ))}
+                            {filteredObjectives.length === 0 && (
+                                <div className="bg-white rounded-lg p-8 text-center">
+                                    <i data-lucide="target" className="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                                    <p className="text-gray-500">Nenhum objetivo da qualidade definido</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {showObjModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+                                    <h3 className="text-xl font-bold mb-4">Novo Objetivo da Qualidade</h3>
+                                    <div className="space-y-4">
+                                        <textarea placeholder="Objetivo" className="w-full border rounded px-3 py-2" rows="2" value={objForm.objective} onChange={(e) => setObjForm({ ...objForm, objective: e.target.value })} />
+                                        <input placeholder="Indicador de Desempenho" className="w-full border rounded px-3 py-2" value={objForm.indicator} onChange={(e) => setObjForm({ ...objForm, indicator: e.target.value })} />
+                                        <input placeholder="Meta" className="w-full border rounded px-3 py-2" value={objForm.target} onChange={(e) => setObjForm({ ...objForm, target: e.target.value })} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <input placeholder="Responsável" className="w-full border rounded px-3 py-2" value={objForm.responsible} onChange={(e) => setObjForm({ ...objForm, responsible: e.target.value })} />
+                                            <input type="date" className="w-full border rounded px-3 py-2" value={objForm.deadline} onChange={(e) => setObjForm({ ...objForm, deadline: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button onClick={() => setShowObjModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
+                                        <button onClick={addObjective} className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600">Criar Objetivo</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Módulo ISO: Controle de Mudanças (ISO 6.3)
+            const ChangeControlModule = () => {
+                const [changeForm, setChangeForm] = useState({ title: '', description: '', reason: '', impact: 'low', status: 'pending', requestedBy: '' });
+                const [showChangeModal, setShowChangeModal] = useState(false);
+
+                const addChange = () => {
+                    const newChange = { ...changeForm, id: Date.now(), projectId: activeProject?.id, date: new Date().toISOString() };
+                    setChanges([...changes, newChange]);
+                    setChangeForm({ title: '', description: '', reason: '', impact: 'low', status: 'pending', requestedBy: '' });
+                    setShowChangeModal(false);
+                    addNotification('success', 'Mudança Registrada', 'Solicitação de mudança criada (ISO 6.3)');
+                };
+
+                const filteredChanges = changes.filter(c => !activeProject || c.projectId === activeProject.id);
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Controle de Mudanças</h2>
+                                <p className="text-sm text-gray-600">ISO 9001:2015 - Cláusula 6.3</p>
+                            </div>
+                            <button onClick={() => setShowChangeModal(true)} className="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 flex items-center gap-2">
+                                <i data-lucide="git-branch" className="w-4 h-4"></i> Nova Mudança
+                            </button>
+                        </div>
+
+                        <div className="grid gap-4">
+                            {filteredChanges.map(change => (
+                                <div key={change.id} className="bg-white rounded-lg p-6 shadow">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex-1">
+                                            <h3 className="font-bold text-lg">{change.title}</h3>
+                                            <p className="text-sm text-gray-600 mt-1">{change.description}</p>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <span className={`px-2 py-1 rounded text-xs text-center ${
+                                                change.status === 'approved' ? 'bg-green-100 text-green-700' :
+                                                change.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                                            }`}>
+                                                {change.status === 'approved' ? 'Aprovada' : change.status === 'rejected' ? 'Rejeitada' : 'Pendente'}
+                                            </span>
+                                            <span className={`px-2 py-1 rounded text-xs text-center ${
+                                                change.impact === 'high' ? 'bg-red-100 text-red-700' :
+                                                change.impact === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
+                                            }`}>
+                                                Impacto: {change.impact === 'high' ? 'Alto' : change.impact === 'medium' ? 'Médio' : 'Baixo'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="text-sm text-gray-600 mt-3">
+                                        <div><strong>Razão:</strong> {change.reason}</div>
+                                        <div><strong>Solicitado por:</strong> {change.requestedBy}</div>
+                                        <div><strong>Data:</strong> {new Date(change.date).toLocaleDateString('pt-BR')}</div>
+                                    </div>
+                                </div>
+                            ))}
+                            {filteredChanges.length === 0 && (
+                                <div className="bg-white rounded-lg p-8 text-center">
+                                    <i data-lucide="git-branch" className="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                                    <p className="text-gray-500">Nenhuma mudança registrada</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {showChangeModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+                                    <h3 className="text-xl font-bold mb-4">Solicitar Mudança</h3>
+                                    <div className="space-y-4">
+                                        <input placeholder="Título da Mudança" className="w-full border rounded px-3 py-2" value={changeForm.title} onChange={(e) => setChangeForm({ ...changeForm, title: e.target.value })} />
+                                        <textarea placeholder="Descrição" className="w-full border rounded px-3 py-2" rows="3" value={changeForm.description} onChange={(e) => setChangeForm({ ...changeForm, description: e.target.value })} />
+                                        <textarea placeholder="Razão/Justificativa" className="w-full border rounded px-3 py-2" rows="2" value={changeForm.reason} onChange={(e) => setChangeForm({ ...changeForm, reason: e.target.value })} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <select className="w-full border rounded px-3 py-2" value={changeForm.impact} onChange={(e) => setChangeForm({ ...changeForm, impact: e.target.value })}>
+                                                <option value="low">Impacto Baixo</option>
+                                                <option value="medium">Impacto Médio</option>
+                                                <option value="high">Impacto Alto</option>
+                                            </select>
+                                            <input placeholder="Solicitado por" className="w-full border rounded px-3 py-2" value={changeForm.requestedBy} onChange={(e) => setChangeForm({ ...changeForm, requestedBy: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button onClick={() => setShowChangeModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
+                                        <button onClick={addChange} className="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600">Registrar Mudança</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Módulo ISO: Gestão de Fornecedores (ISO 8.4)
+            const SuppliersModule = () => {
+                const [suppForm, setSuppForm] = useState({ name: '', category: '', contact: '', email: '', evaluation: 'pending', performance: 5, notes: '' });
+                const [showSuppModal, setShowSuppModal] = useState(false);
+
+                const addSupplier = () => {
+                    const newSupp = { ...suppForm, id: Date.now(), projectId: activeProject?.id, addedDate: new Date().toISOString() };
+                    setSuppliers([...suppliers, newSupp]);
+                    setSuppForm({ name: '', category: '', contact: '', email: '', evaluation: 'pending', performance: 5, notes: '' });
+                    setShowSuppModal(false);
+                    addNotification('success', 'Fornecedor Cadastrado', 'Fornecedor adicionado ao sistema (ISO 8.4)');
+                };
+
+                const filteredSuppliers = suppliers.filter(s => !activeProject || s.projectId === activeProject.id);
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Gestão de Fornecedores</h2>
+                                <p className="text-sm text-gray-600">ISO 9001:2015 - Cláusula 8.4</p>
+                            </div>
+                            <button onClick={() => setShowSuppModal(true)} className="px-4 py-2 bg-cyan-500 text-white rounded hover:bg-cyan-600 flex items-center gap-2">
+                                <i data-lucide="truck" className="w-4 h-4"></i> Novo Fornecedor
+                            </button>
+                        </div>
+
+                        <div className="grid gap-4">
+                            {filteredSuppliers.map(supp => (
+                                <div key={supp.id} className="bg-white rounded-lg p-6 shadow">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex-1">
+                                            <h3 className="font-bold text-lg">{supp.name}</h3>
+                                            <p className="text-sm text-gray-600">{supp.category}</p>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <span className={`px-2 py-1 rounded text-xs text-center ${
+                                                supp.evaluation === 'approved' ? 'bg-green-100 text-green-700' :
+                                                supp.evaluation === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                                            }`}>
+                                                {supp.evaluation === 'approved' ? 'Aprovado' : supp.evaluation === 'rejected' ? 'Reprovado' : 'Pendente'}
+                                            </span>
+                                            <div className="flex items-center gap-1 text-xs">
+                                                <i data-lucide="star" className="w-3 h-3 text-yellow-500"></i>
+                                                <span>{supp.performance}/10</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
+                                        <div><strong>Contato:</strong> {supp.contact}</div>
+                                        <div><strong>Email:</strong> {supp.email}</div>
+                                    </div>
+                                    {supp.notes && <p className="text-sm text-gray-600 mt-2"><strong>Observações:</strong> {supp.notes}</p>}
+                                </div>
+                            ))}
+                            {filteredSuppliers.length === 0 && (
+                                <div className="bg-white rounded-lg p-8 text-center">
+                                    <i data-lucide="truck" className="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                                    <p className="text-gray-500">Nenhum fornecedor cadastrado</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {showSuppModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+                                    <h3 className="text-xl font-bold mb-4">Cadastrar Fornecedor</h3>
+                                    <div className="space-y-4">
+                                        <input placeholder="Nome do Fornecedor" className="w-full border rounded px-3 py-2" value={suppForm.name} onChange={(e) => setSuppForm({ ...suppForm, name: e.target.value })} />
+                                        <input placeholder="Categoria/Serviço" className="w-full border rounded px-3 py-2" value={suppForm.category} onChange={(e) => setSuppForm({ ...suppForm, category: e.target.value })} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <input placeholder="Contato" className="w-full border rounded px-3 py-2" value={suppForm.contact} onChange={(e) => setSuppForm({ ...suppForm, contact: e.target.value })} />
+                                            <input placeholder="Email" className="w-full border rounded px-3 py-2" value={suppForm.email} onChange={(e) => setSuppForm({ ...suppForm, email: e.target.value })} />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <select className="w-full border rounded px-3 py-2" value={suppForm.evaluation} onChange={(e) => setSuppForm({ ...suppForm, evaluation: e.target.value })}>
+                                                <option value="pending">Avaliação Pendente</option>
+                                                <option value="approved">Aprovado</option>
+                                                <option value="rejected">Reprovado</option>
+                                            </select>
+                                            <select className="w-full border rounded px-3 py-2" value={suppForm.performance} onChange={(e) => setSuppForm({ ...suppForm, performance: e.target.value })}>
+                                                <option value="10">Desempenho: 10</option>
+                                                <option value="9">Desempenho: 9</option>
+                                                <option value="8">Desempenho: 8</option>
+                                                <option value="7">Desempenho: 7</option>
+                                                <option value="6">Desempenho: 6</option>
+                                                <option value="5">Desempenho: 5</option>
+                                                <option value="4">Desempenho: 4</option>
+                                                <option value="3">Desempenho: 3</option>
+                                                <option value="2">Desempenho: 2</option>
+                                                <option value="1">Desempenho: 1</option>
+                                            </select>
+                                        </div>
+                                        <textarea placeholder="Observações" className="w-full border rounded px-3 py-2" rows="2" value={suppForm.notes} onChange={(e) => setSuppForm({ ...suppForm, notes: e.target.value })} />
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button onClick={() => setShowSuppModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
+                                        <button onClick={addSupplier} className="px-4 py-2 bg-cyan-500 text-white rounded hover:bg-cyan-600">Cadastrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Módulo ISO: Auditorias Internas (ISO 9.2)
+            const InternalAuditsModule = () => {
+                const [auditForm, setAuditForm] = useState({ title: '', scope: '', auditor: '', date: '', findings: '', status: 'scheduled', type: 'internal' });
+                const [showAuditModal, setShowAuditModal] = useState(false);
+
+                const addAudit = () => {
+                    const newAudit = { ...auditForm, id: Date.now(), projectId: activeProject?.id };
+                    setAudits([...audits, newAudit]);
+                    setAuditForm({ title: '', scope: '', auditor: '', date: '', findings: '', status: 'scheduled', type: 'internal' });
+                    setShowAuditModal(false);
+                    addNotification('success', 'Auditoria Criada', 'Auditoria registrada no sistema (ISO 9.2)');
+                };
+
+                const filteredAudits = audits.filter(a => !activeProject || a.projectId === activeProject.id);
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Auditorias Internas</h2>
+                                <p className="text-sm text-gray-600">ISO 9001:2015 - Cláusula 9.2</p>
+                            </div>
+                            <button onClick={() => setShowAuditModal(true)} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-2">
+                                <i data-lucide="clipboard-check" className="w-4 h-4"></i> Nova Auditoria
+                            </button>
+                        </div>
+
+                        <div className="grid gap-4">
+                            {filteredAudits.map(audit => (
+                                <div key={audit.id} className="bg-white rounded-lg p-6 shadow">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex-1">
+                                            <h3 className="font-bold text-lg">{audit.title}</h3>
+                                            <p className="text-sm text-gray-600 mt-1">{audit.scope}</p>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <span className={`px-2 py-1 rounded text-xs text-center ${
+                                                audit.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                                audit.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
+                                            }`}>
+                                                {audit.status === 'completed' ? 'Concluída' : audit.status === 'in_progress' ? 'Em Andamento' : 'Agendada'}
+                                            </span>
+                                            <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs text-center">
+                                                {audit.type === 'internal' ? 'Interna' : 'Externa'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-2 text-sm text-gray-600">
+                                        <div><strong>Auditor:</strong> {audit.auditor}</div>
+                                        <div><strong>Data:</strong> {new Date(audit.date).toLocaleDateString('pt-BR')}</div>
+                                        {audit.findings && <div><strong>Constatações:</strong> {audit.findings}</div>}
+                                    </div>
+                                </div>
+                            ))}
+                            {filteredAudits.length === 0 && (
+                                <div className="bg-white rounded-lg p-8 text-center">
+                                    <i data-lucide="clipboard-check" className="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                                    <p className="text-gray-500">Nenhuma auditoria registrada</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {showAuditModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+                                    <h3 className="text-xl font-bold mb-4">Registrar Auditoria</h3>
+                                    <div className="space-y-4">
+                                        <input placeholder="Título da Auditoria" className="w-full border rounded px-3 py-2" value={auditForm.title} onChange={(e) => setAuditForm({ ...auditForm, title: e.target.value })} />
+                                        <textarea placeholder="Escopo" className="w-full border rounded px-3 py-2" rows="2" value={auditForm.scope} onChange={(e) => setAuditForm({ ...auditForm, scope: e.target.value })} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <input placeholder="Auditor" className="w-full border rounded px-3 py-2" value={auditForm.auditor} onChange={(e) => setAuditForm({ ...auditForm, auditor: e.target.value })} />
+                                            <input type="date" className="w-full border rounded px-3 py-2" value={auditForm.date} onChange={(e) => setAuditForm({ ...auditForm, date: e.target.value })} />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <select className="w-full border rounded px-3 py-2" value={auditForm.type} onChange={(e) => setAuditForm({ ...auditForm, type: e.target.value })}>
+                                                <option value="internal">Auditoria Interna</option>
+                                                <option value="external">Auditoria Externa</option>
+                                            </select>
+                                            <select className="w-full border rounded px-3 py-2" value={auditForm.status} onChange={(e) => setAuditForm({ ...auditForm, status: e.target.value })}>
+                                                <option value="scheduled">Agendada</option>
+                                                <option value="in_progress">Em Andamento</option>
+                                                <option value="completed">Concluída</option>
+                                            </select>
+                                        </div>
+                                        <textarea placeholder="Constatações/Achados" className="w-full border rounded px-3 py-2" rows="3" value={auditForm.findings} onChange={(e) => setAuditForm({ ...auditForm, findings: e.target.value })} />
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button onClick={() => setShowAuditModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
+                                        <button onClick={addAudit} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Registrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Módulo ISO: Análise Crítica pela Direção (ISO 9.3)
+            const ManagementReviewModule = () => {
+                const [reviewForm, setReviewForm] = useState({ title: '', date: '', participants: '', topics: '', decisions: '', actionItems: '', status: 'scheduled' });
+                const [showReviewModal, setShowReviewModal] = useState(false);
+
+                const addReview = () => {
+                    const newReview = { ...reviewForm, id: Date.now(), projectId: activeProject?.id };
+                    setManagementReviews([...managementReviews, newReview]);
+                    setReviewForm({ title: '', date: '', participants: '', topics: '', decisions: '', actionItems: '', status: 'scheduled' });
+                    setShowReviewModal(false);
+                    addNotification('success', 'Análise Registrada', 'Análise crítica pela direção registrada (ISO 9.3)');
+                };
+
+                const filteredReviews = managementReviews.filter(r => !activeProject || r.projectId === activeProject.id);
+
+                return (
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">Análise Crítica pela Direção</h2>
+                                <p className="text-sm text-gray-600">ISO 9001:2015 - Cláusula 9.3</p>
+                            </div>
+                            <button onClick={() => setShowReviewModal(true)} className="px-4 py-2 bg-violet-500 text-white rounded hover:bg-violet-600 flex items-center gap-2">
+                                <i data-lucide="briefcase" className="w-4 h-4"></i> Nova Análise
+                            </button>
+                        </div>
+
+                        <div className="grid gap-4">
+                            {filteredReviews.map(review => (
+                                <div key={review.id} className="bg-white rounded-lg p-6 shadow border-l-4 border-violet-500">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <h3 className="font-bold text-lg">{review.title}</h3>
+                                        <span className={`px-2 py-1 rounded text-xs ${review.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                            {review.status === 'completed' ? 'Realizada' : 'Agendada'}
+                                        </span>
+                                    </div>
+                                    <div className="grid gap-3 text-sm">
+                                        <div><strong>Data:</strong> {new Date(review.date).toLocaleDateString('pt-BR')}</div>
+                                        <div><strong>Participantes:</strong> {review.participants}</div>
+                                        <div><strong>Tópicos:</strong> <p className="text-gray-700 mt-1">{review.topics}</p></div>
+                                        {review.decisions && <div><strong>Decisões:</strong> <p className="text-gray-700 mt-1">{review.decisions}</p></div>}
+                                        {review.actionItems && <div><strong>Plano de Ação:</strong> <p className="text-gray-700 mt-1">{review.actionItems}</p></div>}
+                                    </div>
+                                </div>
+                            ))}
+                            {filteredReviews.length === 0 && (
+                                <div className="bg-white rounded-lg p-8 text-center">
+                                    <i data-lucide="briefcase" className="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                                    <p className="text-gray-500">Nenhuma análise crítica registrada</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {showReviewModal && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+                                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 my-8">
+                                    <h3 className="text-xl font-bold mb-4">Registrar Análise Crítica</h3>
+                                    <div className="space-y-4">
+                                        <input placeholder="Título da Análise" className="w-full border rounded px-3 py-2" value={reviewForm.title} onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <input type="date" className="w-full border rounded px-3 py-2" value={reviewForm.date} onChange={(e) => setReviewForm({ ...reviewForm, date: e.target.value })} />
+                                            <select className="w-full border rounded px-3 py-2" value={reviewForm.status} onChange={(e) => setReviewForm({ ...reviewForm, status: e.target.value })}>
+                                                <option value="scheduled">Agendada</option>
+                                                <option value="completed">Realizada</option>
+                                            </select>
+                                        </div>
+                                        <input placeholder="Participantes (separados por vírgula)" className="w-full border rounded px-3 py-2" value={reviewForm.participants} onChange={(e) => setReviewForm({ ...reviewForm, participants: e.target.value })} />
+                                        <textarea placeholder="Tópicos Abordados" className="w-full border rounded px-3 py-2" rows="2" value={reviewForm.topics} onChange={(e) => setReviewForm({ ...reviewForm, topics: e.target.value })} />
+                                        <textarea placeholder="Decisões Tomadas" className="w-full border rounded px-3 py-2" rows="2" value={reviewForm.decisions} onChange={(e) => setReviewForm({ ...reviewForm, decisions: e.target.value })} />
+                                        <textarea placeholder="Itens de Ação" className="w-full border rounded px-3 py-2" rows="2" value={reviewForm.actionItems} onChange={(e) => setReviewForm({ ...reviewForm, actionItems: e.target.value })} />
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-6">
+                                        <button onClick={() => setShowReviewModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
+                                        <button onClick={addReview} className="px-4 py-2 bg-violet-500 text-white rounded hover:bg-violet-600">Registrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Módulo Backup e Restore
+            const BackupRestoreModule = () => {
+                const exportData = () => {
+                    const data = {
+                        projects, tasks, risks, stakeholders, wbs, lessons, deliverables,
+                        communications, changes, suppliers, audits, managementReviews, qualityObjectives,
+                        exportDate: new Date().toISOString(),
+                        version: '2.0'
+                    };
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `pmbok-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                    addNotification('success', 'Backup Criado', 'Dados exportados com sucesso!');
+                };
+
+                const importData = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            try {
+                                const data = JSON.parse(event.target.result);
+                                if (window.confirm('Isso irá substituir todos os dados atuais. Deseja continuar?')) {
+                                    setProjects(data.projects || []);
+                                    setTasks(data.tasks || []);
+                                    setRisks(data.risks || []);
+                                    setStakeholders(data.stakeholders || []);
+                                    setWbs(data.wbs || []);
+                                    setLessons(data.lessons || []);
+                                    setDeliverables(data.deliverables || []);
+                                    setCommunications(data.communications || []);
+                                    setChanges(data.changes || []);
+                                    setSuppliers(data.suppliers || []);
+                                    setAudits(data.audits || []);
+                                    setManagementReviews(data.managementReviews || []);
+                                    setQualityObjectives(data.qualityObjectives || []);
+                                    addNotification('success', 'Dados Restaurados', 'Backup importado com sucesso!');
+                                }
+                            } catch (error) {
+                                addNotification('error', 'Erro', 'Arquivo de backup inválido');
+                            }
+                        };
+                        reader.readAsText(file);
+                    }
+                };
+
+                return (
+                    <div className="p-6">
+                        <div className="mb-6">
+                            <h2 className="text-2xl font-bold">Backup e Restore</h2>
+                            <p className="text-sm text-gray-600">Exportar e importar dados do sistema</p>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div className="bg-white rounded-lg p-6 shadow">
+                                <div className="flex items-center justify-center mb-4">
+                                    <i data-lucide="download" className="w-16 h-16 text-blue-500"></i>
+                                </div>
+                                <h3 className="text-lg font-bold text-center mb-2">Exportar Dados</h3>
+                                <p className="text-sm text-gray-600 text-center mb-4">
+                                    Crie um backup completo de todos os dados do sistema
+                                </p>
+                                <button onClick={exportData} className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                    Exportar Backup
+                                </button>
+                            </div>
+
+                            <div className="bg-white rounded-lg p-6 shadow">
+                                <div className="flex items-center justify-center mb-4">
+                                    <i data-lucide="upload" className="w-16 h-16 text-green-500"></i>
+                                </div>
+                                <h3 className="text-lg font-bold text-center mb-2">Importar Dados</h3>
+                                <p className="text-sm text-gray-600 text-center mb-4">
+                                    Restaurar dados de um arquivo de backup
+                                </p>
+                                <input type="file" accept=".json" onChange={importData} className="hidden" id="import-file" />
+                                <label htmlFor="import-file" className="block w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-center cursor-pointer">
+                                    Selecionar Arquivo
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                            <div className="flex">
+                                <i data-lucide="alert-triangle" className="w-5 h-5 text-yellow-600 mr-2"></i>
+                                <div className="text-sm">
+                                    <p className="font-semibold text-yellow-800">Atenção</p>
+                                    <p className="text-yellow-700">A importação de dados irá substituir todos os dados atuais do sistema. Faça um backup antes de importar.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
             // Módulo de Configuração de IA
             const AISettingsModule = () => {
                 const [apiKeyInput, setApiKeyInput] = useState(geminiApiKey);
@@ -2152,14 +3174,27 @@ Seja conciso, prático e profissional.`;
                 const menuItems = [
                     { id: 'dashboard', name: t('dashboard'), icon: 'layout-dashboard' },
                     { id: 'projects', name: t('projects'), icon: 'folder' },
-                    { id: 'tasks', name: 'Tarefas', icon: 'check-square' },
+                    { id: 'divider-pmbok', name: '─── PMBOK 7 ───', icon: null, disabled: true },
+                    { id: 'project-charter', name: 'Project Charter', icon: 'file-badge' },
+                    { id: 'tasks', name: 'Tarefas Kanban', icon: 'check-square' },
+                    { id: 'wbs', name: 'WBS', icon: 'network' },
+                    { id: 'deliverables', name: 'Entregas', icon: 'package' },
+                    { id: 'communications', name: 'Comunicações', icon: 'message-square' },
+                    { id: 'lessons-learned', name: 'Lições Aprendidas', icon: 'lightbulb' },
                     { id: 'risks', name: 'Riscos', icon: 'alert-triangle' },
                     { id: 'stakeholders', name: 'Stakeholders', icon: 'users' },
                     { id: 'reports', name: 'Relatórios', icon: 'file-text' },
-                    { id: 'divider1', name: '─── ISO 9001 ───', icon: null, disabled: true },
+                    { id: 'divider-iso', name: '─── ISO 9001 ───', icon: null, disabled: true },
                     { id: 'quality-policy', name: 'Política Qualidade', icon: 'shield-check' },
+                    { id: 'quality-objectives', name: 'Objetivos Qualidade', icon: 'target' },
                     { id: 'non-conformities', name: 'Não Conformidades', icon: 'alert-octagon' },
-                    { id: 'divider2', name: '─── Inteligência Artificial ───', icon: null, disabled: true },
+                    { id: 'change-control', name: 'Controle Mudanças', icon: 'git-branch' },
+                    { id: 'suppliers', name: 'Fornecedores', icon: 'truck' },
+                    { id: 'audits', name: 'Auditorias', icon: 'clipboard-check' },
+                    { id: 'management-review', name: 'Análise Direção', icon: 'briefcase' },
+                    { id: 'divider-system', name: '─── Sistema ───', icon: null, disabled: true },
+                    { id: 'backup-restore', name: 'Backup/Restore', icon: 'database' },
+                    { id: 'divider-ai', name: '─── Inteligência Artificial ───', icon: null, disabled: true },
                     { id: 'ai-settings', name: 'Configurar IA', icon: 'brain' },
                     { id: 'settings', name: t('settings'), icon: 'settings' }
                 ];
@@ -2322,11 +3357,22 @@ Seja conciso, prático e profissional.`;
                                     </div>
                                 )}
                                 {activeView === 'tasks' && <TasksKanban />}
+                                {activeView === 'wbs' && <WBSModule />}
+                                {activeView === 'lessons-learned' && <LessonsLearnedModule />}
+                                {activeView === 'deliverables' && <DeliverablesModule />}
+                                {activeView === 'communications' && <CommunicationsModule />}
+                                {activeView === 'project-charter' && <ProjectCharterModule />}
                                 {activeView === 'risks' && <RisksManager />}
                                 {activeView === 'stakeholders' && <StakeholdersManager />}
                                 {activeView === 'reports' && <ReportsModule />}
                                 {activeView === 'quality-policy' && <QualityPolicyModule />}
+                                {activeView === 'quality-objectives' && <QualityObjectivesModule />}
+                                {activeView === 'change-control' && <ChangeControlModule />}
                                 {activeView === 'non-conformities' && <NonConformitiesModule />}
+                                {activeView === 'suppliers' && <SuppliersModule />}
+                                {activeView === 'audits' && <InternalAuditsModule />}
+                                {activeView === 'management-review' && <ManagementReviewModule />}
+                                {activeView === 'backup-restore' && <BackupRestoreModule />}
                                 {activeView === 'ai-settings' && <AISettingsModule />}
                             </div>
                         </div>
