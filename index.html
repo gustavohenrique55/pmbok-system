@@ -77,6 +77,13 @@
                 accent: '#10B981'
             });
 
+            // Estados para novos módulos avançados
+            const [teamMembers, setTeamMembers] = useState([]);
+            const [acquisitions, setAcquisitions] = useState([]);
+            const [competencies, setCompetencies] = useState([]);
+            const [organizationalContext, setOrganizationalContext] = useState(null);
+            const [knowledgeBase, setKnowledgeBase] = useState([]);
+
             // Traduções
             const translations = {
                 pt: {
@@ -3698,6 +3705,512 @@ Faça uma análise executiva completa e retorne APENAS um JSON válido (sem mark
                                 <div><strong>EAC:</strong> Estimate at Completion - Custo projetado final</div>
                                 <div><strong>VAC:</strong> Variance at Completion - Diferença entre BAC e EAC</div>
                             </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Módulo de Timeline/Gantt Chart Interativo
+            const GanttChartModule = () => {
+                const [ganttTasks, setGanttTasks] = useState([]);
+                const [viewMode, setViewMode] = useState('month'); // day, week, month
+
+                useEffect(() => {
+                    if (activeProject) {
+                        const projectTasks = tasks.filter(t => t.projectId === activeProject.id);
+                        setGanttTasks(projectTasks);
+                    }
+                }, [activeProject]);
+
+                const getDaysBetween = (start, end) => {
+                    const diff = new Date(end) - new Date(start);
+                    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+                };
+
+                const getTaskPosition = (taskDate) => {
+                    if (!activeProject || !activeProject.startDate) return 0;
+                    const projectStart = new Date(activeProject.startDate);
+                    const taskStart = new Date(taskDate);
+                    return getDaysBetween(projectStart, taskStart);
+                };
+
+                const getTaskWidth = (startDate, endDate) => {
+                    return Math.max(getDaysBetween(startDate, endDate), 1);
+                };
+
+                const getTotalDays = () => {
+                    if (!activeProject) return 30;
+                    return getDaysBetween(activeProject.startDate, activeProject.endDate);
+                };
+
+                const getProgress = () => {
+                    if (!ganttTasks.length) return 0;
+                    const done = ganttTasks.filter(t => t.status === 'done').length;
+                    return (done / ganttTasks.length * 100).toFixed(1);
+                };
+
+                return (
+                    <div className="p-6">
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                                        <i data-lucide="gantt-chart" className="w-6 h-6"></i>
+                                        Timeline / Gantt Chart
+                                    </h2>
+                                    <p className="text-gray-600 mt-1">Visualização temporal das tarefas do projeto</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setViewMode('day')}
+                                        className={`px-3 py-1 rounded ${viewMode === 'day' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                                    >
+                                        Dia
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('week')}
+                                        className={`px-3 py-1 rounded ${viewMode === 'week' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                                    >
+                                        Semana
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('month')}
+                                        className={`px-3 py-1 rounded ${viewMode === 'month' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                                    >
+                                        Mês
+                                    </button>
+                                </div>
+                            </div>
+
+                            {!activeProject ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    <i data-lucide="folder" className="w-16 h-16 mx-auto mb-4 opacity-50"></i>
+                                    <p>Selecione um projeto para visualizar o Gantt Chart</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Métricas */}
+                                    <div className="grid md:grid-cols-4 gap-4 mb-6">
+                                        <div className="bg-blue-50 rounded-lg p-4">
+                                            <p className="text-sm text-gray-600">Total de Tarefas</p>
+                                            <p className="text-2xl font-bold text-blue-600">{ganttTasks.length}</p>
+                                        </div>
+                                        <div className="bg-green-50 rounded-lg p-4">
+                                            <p className="text-sm text-gray-600">Progresso Geral</p>
+                                            <p className="text-2xl font-bold text-green-600">{getProgress()}%</p>
+                                        </div>
+                                        <div className="bg-purple-50 rounded-lg p-4">
+                                            <p className="text-sm text-gray-600">Duração Total</p>
+                                            <p className="text-2xl font-bold text-purple-600">{getTotalDays()} dias</p>
+                                        </div>
+                                        <div className="bg-orange-50 rounded-lg p-4">
+                                            <p className="text-sm text-gray-600">Início do Projeto</p>
+                                            <p className="text-lg font-bold text-orange-600">
+                                                {new Date(activeProject.startDate).toLocaleDateString('pt-BR')}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Gantt Chart */}
+                                    <div className="overflow-x-auto">
+                                        <div className="min-w-full border rounded-lg">
+                                            {ganttTasks.length === 0 ? (
+                                                <div className="text-center py-12 text-gray-500">
+                                                    <i data-lucide="calendar-x" className="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                                                    <p>Nenhuma tarefa cadastrada ainda</p>
+                                                </div>
+                                            ) : (
+                                                <table className="min-w-full">
+                                                    <thead className="bg-gray-50">
+                                                        <tr>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-64">
+                                                                Tarefa
+                                                            </th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                                                Timeline
+                                                            </th>
+                                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
+                                                                Duração
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="bg-white divide-y divide-gray-200">
+                                                        {ganttTasks.map((task) => {
+                                                            const startPos = getTaskPosition(task.startDate || activeProject.startDate);
+                                                            const duration = getTaskWidth(
+                                                                task.startDate || activeProject.startDate,
+                                                                task.dueDate || activeProject.endDate
+                                                            );
+                                                            const totalDays = getTotalDays();
+                                                            const leftPercent = (startPos / totalDays) * 100;
+                                                            const widthPercent = (duration / totalDays) * 100;
+
+                                                            const statusColor = {
+                                                                'todo': 'bg-gray-400',
+                                                                'in-progress': 'bg-blue-500',
+                                                                'done': 'bg-green-500'
+                                                            }[task.status] || 'bg-gray-400';
+
+                                                            return (
+                                                                <tr key={task.id}>
+                                                                    <td className="px-4 py-3">
+                                                                        <div className="font-medium text-gray-900">{task.title}</div>
+                                                                        <div className="text-xs text-gray-500">{task.responsible || 'Não atribuído'}</div>
+                                                                    </td>
+                                                                    <td className="px-4 py-3">
+                                                                        <div className="relative h-8 bg-gray-100 rounded">
+                                                                            <div
+                                                                                className={`absolute h-full ${statusColor} rounded flex items-center justify-center text-white text-xs font-bold`}
+                                                                                style={{
+                                                                                    left: `${leftPercent}%`,
+                                                                                    width: `${Math.max(widthPercent, 2)}%`
+                                                                                }}
+                                                                            >
+                                                                                {duration}d
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-sm text-gray-500">
+                                                                        {duration} dias
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Legenda */}
+                                    <div className="mt-6 flex gap-4 items-center text-sm">
+                                        <span className="font-semibold">Legenda:</span>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 bg-gray-400 rounded"></div>
+                                            <span>A Fazer</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                                            <span>Em Progresso</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 bg-green-500 rounded"></div>
+                                            <span>Concluído</span>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+
+            // Módulo de Gestão de Recursos Humanos / Equipe
+            const TeamManagementModule = () => {
+                const [showForm, setShowForm] = useState(false);
+                const [formData, setFormData] = useState({
+                    name: '',
+                    role: '',
+                    email: '',
+                    phone: '',
+                    department: '',
+                    skills: '',
+                    availability: '100',
+                    costPerHour: '',
+                    startDate: '',
+                    projectId: activeProject?.id || ''
+                });
+
+                const projectTeam = teamMembers.filter(m => m.projectId === activeProject?.id);
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    const newMember = {
+                        ...formData,
+                        id: Date.now(),
+                        projectId: activeProject.id,
+                        createdAt: new Date().toISOString()
+                    };
+                    setTeamMembers([...teamMembers, newMember]);
+                    setFormData({
+                        name: '',
+                        role: '',
+                        email: '',
+                        phone: '',
+                        department: '',
+                        skills: '',
+                        availability: '100',
+                        costPerHour: '',
+                        startDate: '',
+                        projectId: activeProject?.id || ''
+                    });
+                    setShowForm(false);
+                    addNotification('success', 'Sucesso', 'Membro da equipe adicionado!');
+                };
+
+                const removeMember = (id) => {
+                    if (confirm('Remover este membro da equipe?')) {
+                        setTeamMembers(teamMembers.filter(m => m.id !== id));
+                        addNotification('info', 'Removido', 'Membro removido da equipe');
+                    }
+                };
+
+                return (
+                    <div className="p-6">
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                                        <i data-lucide="users" className="w-6 h-6"></i>
+                                        Gestão de Recursos Humanos
+                                    </h2>
+                                    <p className="text-gray-600 mt-1">Gerenciamento da equipe do projeto</p>
+                                </div>
+                                {activeProject && (
+                                    <button
+                                        onClick={() => setShowForm(!showForm)}
+                                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center gap-2"
+                                    >
+                                        <i data-lucide="user-plus" className="w-4 h-4"></i>
+                                        Adicionar Membro
+                                    </button>
+                                )}
+                            </div>
+
+                            {!activeProject ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    <i data-lucide="folder" className="w-16 h-16 mx-auto mb-4 opacity-50"></i>
+                                    <p>Selecione um projeto para gerenciar a equipe</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Métricas da Equipe */}
+                                    <div className="grid md:grid-cols-4 gap-4 mb-6">
+                                        <div className="bg-blue-50 rounded-lg p-4">
+                                            <p className="text-sm text-gray-600">Total de Membros</p>
+                                            <p className="text-2xl font-bold text-blue-600">{projectTeam.length}</p>
+                                        </div>
+                                        <div className="bg-green-50 rounded-lg p-4">
+                                            <p className="text-sm text-gray-600">Disponibilidade Média</p>
+                                            <p className="text-2xl font-bold text-green-600">
+                                                {projectTeam.length > 0
+                                                    ? (projectTeam.reduce((sum, m) => sum + parseInt(m.availability || 0), 0) / projectTeam.length).toFixed(0)
+                                                    : 0}%
+                                            </p>
+                                        </div>
+                                        <div className="bg-purple-50 rounded-lg p-4">
+                                            <p className="text-sm text-gray-600">Custo/Hora Médio</p>
+                                            <p className="text-2xl font-bold text-purple-600">
+                                                R$ {projectTeam.length > 0
+                                                    ? (projectTeam.reduce((sum, m) => sum + parseFloat(m.costPerHour || 0), 0) / projectTeam.length).toFixed(2)
+                                                    : '0.00'}
+                                            </p>
+                                        </div>
+                                        <div className="bg-orange-50 rounded-lg p-4">
+                                            <p className="text-sm text-gray-600">Departamentos</p>
+                                            <p className="text-2xl font-bold text-orange-600">
+                                                {new Set(projectTeam.map(m => m.department).filter(Boolean)).size}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Formulário */}
+                                    {showForm && (
+                                        <form onSubmit={handleSubmit} className="bg-blue-50 rounded-lg p-6 mb-6">
+                                            <h3 className="font-bold text-lg mb-4">Novo Membro da Equipe</h3>
+                                            <div className="grid md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-1">Nome Completo *</label>
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        value={formData.name}
+                                                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                                        className="w-full border rounded px-3 py-2"
+                                                        placeholder="João Silva"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-1">Cargo/Função *</label>
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        value={formData.role}
+                                                        onChange={(e) => setFormData({...formData, role: e.target.value})}
+                                                        className="w-full border rounded px-3 py-2"
+                                                        placeholder="Desenvolvedor Full Stack"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-1">Email</label>
+                                                    <input
+                                                        type="email"
+                                                        value={formData.email}
+                                                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                                        className="w-full border rounded px-3 py-2"
+                                                        placeholder="joao@empresa.com"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-1">Telefone</label>
+                                                    <input
+                                                        type="tel"
+                                                        value={formData.phone}
+                                                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                                        className="w-full border rounded px-3 py-2"
+                                                        placeholder="(11) 98765-4321"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-1">Departamento</label>
+                                                    <input
+                                                        type="text"
+                                                        value={formData.department}
+                                                        onChange={(e) => setFormData({...formData, department: e.target.value})}
+                                                        className="w-full border rounded px-3 py-2"
+                                                        placeholder="TI, Marketing, etc"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-1">Habilidades</label>
+                                                    <input
+                                                        type="text"
+                                                        value={formData.skills}
+                                                        onChange={(e) => setFormData({...formData, skills: e.target.value})}
+                                                        className="w-full border rounded px-3 py-2"
+                                                        placeholder="React, Node.js, Python"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-1">Disponibilidade (%)</label>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max="100"
+                                                        value={formData.availability}
+                                                        onChange={(e) => setFormData({...formData, availability: e.target.value})}
+                                                        className="w-full border rounded px-3 py-2"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-1">Custo por Hora (R$)</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={formData.costPerHour}
+                                                        onChange={(e) => setFormData({...formData, costPerHour: e.target.value})}
+                                                        className="w-full border rounded px-3 py-2"
+                                                        placeholder="150.00"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-1">Data de Início</label>
+                                                    <input
+                                                        type="date"
+                                                        value={formData.startDate}
+                                                        onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                                                        className="w-full border rounded px-3 py-2"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2 mt-4">
+                                                <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                                                    Salvar Membro
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowForm(false)}
+                                                    className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            </div>
+                                        </form>
+                                    )}
+
+                                    {/* Lista de Membros */}
+                                    <div className="space-y-4">
+                                        {projectTeam.length === 0 ? (
+                                            <div className="text-center py-12 text-gray-500">
+                                                <i data-lucide="users-round" className="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                                                <p>Nenhum membro cadastrado ainda</p>
+                                            </div>
+                                        ) : (
+                                            projectTeam.map((member) => (
+                                                <div key={member.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-3 mb-2">
+                                                                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                                                                    {member.name.charAt(0)}
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="font-bold text-lg">{member.name}</h4>
+                                                                    <p className="text-sm text-gray-600">{member.role}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid md:grid-cols-2 gap-3 mt-3 text-sm">
+                                                                {member.email && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <i data-lucide="mail" className="w-4 h-4 text-gray-400"></i>
+                                                                        <span>{member.email}</span>
+                                                                    </div>
+                                                                )}
+                                                                {member.phone && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <i data-lucide="phone" className="w-4 h-4 text-gray-400"></i>
+                                                                        <span>{member.phone}</span>
+                                                                    </div>
+                                                                )}
+                                                                {member.department && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <i data-lucide="building" className="w-4 h-4 text-gray-400"></i>
+                                                                        <span>{member.department}</span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex items-center gap-2">
+                                                                    <i data-lucide="gauge" className="w-4 h-4 text-gray-400"></i>
+                                                                    <span>Disponibilidade: {member.availability}%</span>
+                                                                </div>
+                                                                {member.costPerHour && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <i data-lucide="dollar-sign" className="w-4 h-4 text-gray-400"></i>
+                                                                        <span>R$ {parseFloat(member.costPerHour).toFixed(2)}/hora</span>
+                                                                    </div>
+                                                                )}
+                                                                {member.startDate && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <i data-lucide="calendar" className="w-4 h-4 text-gray-400"></i>
+                                                                        <span>Início: {new Date(member.startDate).toLocaleDateString('pt-BR')}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            {member.skills && (
+                                                                <div className="mt-3">
+                                                                    <span className="text-sm font-semibold text-gray-600">Habilidades: </span>
+                                                                    <div className="flex flex-wrap gap-2 mt-1">
+                                                                        {member.skills.split(',').map((skill, idx) => (
+                                                                            <span key={idx} className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">
+                                                                                {skill.trim()}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => removeMember(member.id)}
+                                                            className="text-red-500 hover:text-red-700 p-2"
+                                                        >
+                                                            <i data-lucide="trash-2" className="w-5 h-5"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 );
