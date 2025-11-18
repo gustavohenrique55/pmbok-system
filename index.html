@@ -603,6 +603,307 @@
 
             // ==================== FIM FIREBASE FUNCTIONS ====================
 
+            // ==================== CLICKUP FUNCTIONS ====================
+
+            // Testar conexão ClickUp
+            const testClickUpConnection = async (apiKey) => {
+                try {
+                    const response = await fetch('https://api.clickup.com/api/v2/team', {
+                        headers: {
+                            'Authorization': apiKey
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('API Key inválida');
+                    }
+
+                    const data = await response.json();
+                    return { success: true, teams: data.teams };
+                } catch (error) {
+                    return { success: false, error: error.message };
+                }
+            };
+
+            // Importar tarefas do ClickUp
+            const importFromClickUp = async (listId) => {
+                if (!clickupApiKey) {
+                    addNotification('error', 'Erro', 'Configure a API Key do ClickUp primeiro');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`https://api.clickup.com/api/v2/list/${listId}/task`, {
+                        headers: {
+                            'Authorization': clickupApiKey
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Erro ao buscar tarefas');
+                    }
+
+                    const data = await response.json();
+                    const importedTasks = data.tasks.map(task => ({
+                        id: task.id,
+                        title: task.name,
+                        description: task.description || '',
+                        status: mapClickUpStatus(task.status.status),
+                        priority: mapClickUpPriority(task.priority),
+                        assignee: task.assignees[0]?.username || '',
+                        dueDate: task.due_date ? new Date(parseInt(task.due_date)).toISOString().split('T')[0] : '',
+                        projectId: activeProject?.id
+                    }));
+
+                    setTasks([...tasks, ...importedTasks]);
+                    addNotification('success', 'ClickUp', `${importedTasks.length} tarefas importadas`);
+                } catch (error) {
+                    addNotification('error', 'Erro ClickUp', error.message);
+                }
+            };
+
+            // Exportar tarefas para ClickUp
+            const exportToClickUp = async (listId) => {
+                if (!clickupApiKey) {
+                    addNotification('error', 'Erro', 'Configure a API Key do ClickUp primeiro');
+                    return;
+                }
+
+                try {
+                    const projectTasks = tasks.filter(t => t.projectId === activeProject?.id);
+                    let created = 0;
+
+                    for (const task of projectTasks) {
+                        const clickupTask = {
+                            name: task.title,
+                            description: task.description || '',
+                            status: mapToClickUpStatus(task.status),
+                            priority: mapToClickUpPriority(task.priority),
+                            due_date: task.dueDate ? new Date(task.dueDate).getTime() : null
+                        };
+
+                        const response = await fetch(`https://api.clickup.com/api/v2/list/${listId}/task`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': clickupApiKey,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(clickupTask)
+                        });
+
+                        if (response.ok) created++;
+                    }
+
+                    addNotification('success', 'ClickUp', `${created} tarefas exportadas`);
+                } catch (error) {
+                    addNotification('error', 'Erro ClickUp', error.message);
+                }
+            };
+
+            // Mapear status ClickUp → System Pro
+            const mapClickUpStatus = (status) => {
+                const statusMap = {
+                    'to do': 'todo',
+                    'in progress': 'in-progress',
+                    'complete': 'done'
+                };
+                return statusMap[status.toLowerCase()] || 'todo';
+            };
+
+            // Mapear status System Pro → ClickUp
+            const mapToClickUpStatus = (status) => {
+                const statusMap = {
+                    'todo': 'to do',
+                    'in-progress': 'in progress',
+                    'done': 'complete'
+                };
+                return statusMap[status] || 'to do';
+            };
+
+            // Mapear prioridade ClickUp → System Pro
+            const mapClickUpPriority = (priority) => {
+                if (!priority) return 'medium';
+                const priorityMap = {
+                    1: 'urgent',
+                    2: 'high',
+                    3: 'medium',
+                    4: 'low'
+                };
+                return priorityMap[priority.priority] || 'medium';
+            };
+
+            // Mapear prioridade System Pro → ClickUp
+            const mapToClickUpPriority = (priority) => {
+                const priorityMap = {
+                    'urgent': 1,
+                    'high': 2,
+                    'medium': 3,
+                    'low': 4
+                };
+                return priorityMap[priority] || 3;
+            };
+
+            // ==================== FIM CLICKUP FUNCTIONS ====================
+
+            // ==================== MS PROJECT FUNCTIONS ====================
+
+            // Exportar para MS Project XML
+            const exportToMSProject = () => {
+                if (!activeProject) {
+                    addNotification('error', 'Erro', 'Selecione um projeto primeiro');
+                    return;
+                }
+
+                try {
+                    const projectTasks = tasks.filter(t => t.projectId === activeProject.id);
+
+                    // Gerar XML no formato MS Project
+                    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/project">
+  <Name>${activeProject.name}</Name>
+  <Title>${activeProject.name}</Title>
+  <Manager>${activeProject.manager || currentUser.name}</Manager>
+  <StartDate>${activeProject.startDate || new Date().toISOString()}</StartDate>
+  <FinishDate>${activeProject.endDate || new Date().toISOString()}</FinishDate>
+
+  <Tasks>`;
+
+                    projectTasks.forEach((task, index) => {
+                        xml += `
+    <Task>
+      <UID>${index + 1}</UID>
+      <ID>${index + 1}</ID>
+      <Name>${escapeXml(task.title)}</Name>
+      <Notes>${escapeXml(task.description || '')}</Notes>
+      <Priority>${getPriorityNumber(task.priority)}</Priority>
+      <PercentComplete>${task.status === 'done' ? 100 : task.status === 'in-progress' ? 50 : 0}</PercentComplete>
+      <Start>${task.dueDate || activeProject.startDate || new Date().toISOString()}</Start>
+      <Finish>${task.dueDate || activeProject.endDate || new Date().toISOString()}</Finish>
+      <Duration>PT8H</Duration>
+      <ResourceNames>${escapeXml(task.assignee || '')}</ResourceNames>
+    </Task>`;
+                    });
+
+                    xml += `
+  </Tasks>
+</Project>`;
+
+                    // Download do arquivo XML
+                    const blob = new Blob([xml], { type: 'application/xml' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${activeProject.name.replace(/\s+/g, '-')}.xml`;
+                    a.click();
+
+                    addNotification('success', 'MS Project', 'Projeto exportado com sucesso!');
+                } catch (error) {
+                    addNotification('error', 'Erro', 'Falha ao exportar: ' + error.message);
+                }
+            };
+
+            // Importar de MS Project XML
+            const importFromMSProject = () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.xml';
+
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const xmlText = event.target.result;
+                            const parser = new DOMParser();
+                            const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+
+                            // Extrair informações do projeto
+                            const projectName = xmlDoc.getElementsByTagName('Name')[0]?.textContent || 'Projeto Importado';
+                            const manager = xmlDoc.getElementsByTagName('Manager')[0]?.textContent || currentUser.name;
+                            const startDate = xmlDoc.getElementsByTagName('StartDate')[0]?.textContent || new Date().toISOString();
+                            const finishDate = xmlDoc.getElementsByTagName('FinishDate')[0]?.textContent || new Date().toISOString();
+
+                            // Criar projeto
+                            const newProject = {
+                                id: Date.now(),
+                                name: projectName,
+                                description: 'Importado do MS Project',
+                                manager: manager,
+                                startDate: startDate.split('T')[0],
+                                endDate: finishDate.split('T')[0],
+                                status: 'active',
+                                userId: currentUser.id,
+                                createdAt: new Date().toISOString()
+                            };
+
+                            setProjects([...projects, newProject]);
+                            setActiveProject(newProject);
+
+                            // Extrair tarefas
+                            const taskElements = xmlDoc.getElementsByTagName('Task');
+                            const importedTasks = [];
+
+                            for (let i = 0; i < taskElements.length; i++) {
+                                const taskEl = taskElements[i];
+                                const name = taskEl.getElementsByTagName('Name')[0]?.textContent || '';
+                                const notes = taskEl.getElementsByTagName('Notes')[0]?.textContent || '';
+                                const priority = taskEl.getElementsByTagName('Priority')[0]?.textContent || '500';
+                                const percentComplete = parseInt(taskEl.getElementsByTagName('PercentComplete')[0]?.textContent || '0');
+                                const finish = taskEl.getElementsByTagName('Finish')[0]?.textContent || '';
+                                const resource = taskEl.getElementsByTagName('ResourceNames')[0]?.textContent || '';
+
+                                importedTasks.push({
+                                    id: Date.now() + i,
+                                    title: name,
+                                    description: notes,
+                                    priority: getPriorityFromNumber(priority),
+                                    status: percentComplete === 100 ? 'done' : percentComplete > 0 ? 'in-progress' : 'todo',
+                                    dueDate: finish ? finish.split('T')[0] : '',
+                                    assignee: resource,
+                                    projectId: newProject.id
+                                });
+                            }
+
+                            setTasks([...tasks, ...importedTasks]);
+                            addNotification('success', 'MS Project', `Projeto e ${importedTasks.length} tarefas importados!`);
+                        } catch (error) {
+                            addNotification('error', 'Erro', 'Falha ao importar XML: ' + error.message);
+                        }
+                    };
+
+                    reader.readAsText(file);
+                };
+
+                input.click();
+            };
+
+            // Funções auxiliares para MS Project
+            const escapeXml = (str) => {
+                if (!str) return '';
+                return str
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&apos;');
+            };
+
+            const getPriorityNumber = (priority) => {
+                const map = { 'low': 200, 'medium': 500, 'high': 800, 'urgent': 1000 };
+                return map[priority] || 500;
+            };
+
+            const getPriorityFromNumber = (num) => {
+                const priority = parseInt(num);
+                if (priority >= 800) return 'high';
+                if (priority >= 500) return 'medium';
+                return 'low';
+            };
+
+            // ==================== FIM MS PROJECT FUNCTIONS ====================
+
             // Função para buscar no manual do usuário
             const searchUserManual = (userQuestion) => {
                 const questionLower = userQuestion.toLowerCase();
@@ -3941,19 +4242,46 @@ Seja profissional, conciso e use linguagem executiva.`;
                                                             onChange={(e) => setClickupWorkspaceId(e.target.value)}
                                                             className="w-full border rounded px-3 py-2 text-sm"
                                                         />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Space/List ID para Sync"
+                                                            value={clickupSpaceId}
+                                                            onChange={(e) => setClickupSpaceId(e.target.value)}
+                                                            className="w-full border rounded px-3 py-2 text-sm"
+                                                        />
                                                         <button
-                                                            onClick={() => {
-                                                                if (clickupApiKey) {
-                                                                    setClickupConnected(true);
-                                                                    addNotification('success', 'ClickUp', 'Conectado! (implementação em progresso)');
-                                                                } else {
-                                                                    addNotification('error', 'Erro', 'Insira a API Key primeiro');
-                                                                }
-                                                            }}
+                                                            onClick={() => testClickUpConnection(clickupApiKey)}
                                                             className="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
                                                         >
                                                             ⚡ Conectar ClickUp
                                                         </button>
+
+                                                        {clickupConnected && clickupSpaceId && (
+                                                            <div className="pt-2 border-t space-y-2">
+                                                                <button
+                                                                    onClick={() => importFromClickUp(clickupSpaceId)}
+                                                                    className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                                >
+                                                                    📥 Importar Tarefas do ClickUp
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => exportToClickUp(clickupSpaceId)}
+                                                                    className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                                                                >
+                                                                    📤 Exportar Tarefas para ClickUp
+                                                                </button>
+                                                                <label className="flex items-center space-x-2 text-sm">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={clickupSyncEnabled}
+                                                                        onChange={(e) => setClickupSyncEnabled(e.target.checked)}
+                                                                        className="rounded"
+                                                                    />
+                                                                    <span>🔄 Sincronização Automática</span>
+                                                                </label>
+                                                            </div>
+                                                        )}
+
                                                         <a
                                                             href="https://app.clickup.com/settings/apps"
                                                             target="_blank"
@@ -3972,21 +4300,13 @@ Seja profissional, conciso e use linguagem executiva.`;
                                                     </p>
                                                     <div className="space-y-2">
                                                         <button
-                                                            onClick={() => {
-                                                                if (!activeProject) {
-                                                                    addNotification('error', 'Erro', 'Selecione um projeto primeiro');
-                                                                    return;
-                                                                }
-                                                                addNotification('info', 'MS Project', 'Exportação implementada em breve');
-                                                            }}
+                                                            onClick={exportToMSProject}
                                                             className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                                                         >
                                                             📤 Exportar para MS Project XML
                                                         </button>
                                                         <button
-                                                            onClick={() => {
-                                                                addNotification('info', 'MS Project', 'Importação implementada em breve');
-                                                            }}
+                                                            onClick={importFromMSProject}
                                                             className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
                                                         >
                                                             📥 Importar de MS Project XML
