@@ -84,6 +84,23 @@
             const [aiLoading, setAiLoading] = useState(false);
             const [geminiApiKey, setGeminiApiKey] = useState('AIzaSyCliG1LLOlp1nZyu3eMxhZJenH1H7BN70k');
 
+            // Estados para Firebase
+            const [firebaseConfig, setFirebaseConfig] = useState(null);
+            const [firebaseInitialized, setFirebaseInitialized] = useState(false);
+            const [firebaseAuth, setFirebaseAuth] = useState(null);
+            const [firebaseDb, setFirebaseDb] = useState(null);
+            const [syncEnabled, setSyncEnabled] = useState(false);
+            const [syncStatus, setSyncStatus] = useState('disconnected'); // disconnected, connecting, connected, syncing, error
+            const [teamMembers, setTeamMembers] = useState([]);
+            const [pendingInvites, setPendingInvites] = useState([]);
+
+            // Estados para ClickUp
+            const [clickupApiKey, setClickupApiKey] = useState('');
+            const [clickupWorkspaceId, setClickupWorkspaceId] = useState('');
+            const [clickupSpaceId, setClickupSpaceId] = useState('');
+            const [clickupConnected, setClickupConnected] = useState(false);
+            const [clickupSyncEnabled, setClickupSyncEnabled] = useState(false);
+
             // Base de Conhecimento do Manual do Usuário
             const userManualKnowledge = {
                 'dashboard': {
@@ -252,6 +269,339 @@
                     - Dados armazenados no navegador (LocalStorage)`
                 }
             };
+
+            // ==================== FIREBASE FUNCTIONS ====================
+
+            // Inicializar Firebase
+            const initializeFirebase = (config) => {
+                try {
+                    if (!window.firebase) {
+                        addNotification('error', 'Erro', 'Firebase SDK não carregado');
+                        return false;
+                    }
+
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(config);
+                    }
+
+                    const auth = firebase.auth();
+                    const db = firebase.firestore();
+
+                    setFirebaseAuth(auth);
+                    setFirebaseDb(db);
+                    setFirebaseInitialized(true);
+                    setSyncStatus('connected');
+
+                    addNotification('success', 'Firebase', 'Conectado com sucesso!');
+
+                    // Listener de autenticação
+                    auth.onAuthStateChanged((user) => {
+                        if (user) {
+                            setCurrentUser({
+                                id: user.uid,
+                                name: user.displayName || user.email,
+                                email: user.email,
+                                photoURL: user.photoURL
+                            });
+                            setIsLoggedIn(true);
+                            setShowLogin(false);
+
+                            // Carregar projetos do usuário
+                            loadUserProjects(user.uid, db);
+                        } else {
+                            // Usuário deslogado - manter dados locais
+                            if (!currentUser) {
+                                setShowLogin(true);
+                            }
+                        }
+                    });
+
+                    return true;
+                } catch (error) {
+                    console.error('Erro ao inicializar Firebase:', error);
+                    addNotification('error', 'Erro Firebase', error.message);
+                    setSyncStatus('error');
+                    return false;
+                }
+            };
+
+            // Autenticação com Email/Senha
+            const signUpWithFirebase = async (email, password, displayName) => {
+                try {
+                    if (!firebaseAuth) {
+                        throw new Error('Firebase não inicializado');
+                    }
+
+                    const userCredential = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+                    const user = userCredential.user;
+
+                    // Atualizar perfil
+                    await user.updateProfile({ displayName });
+
+                    // Criar documento do usuário no Firestore
+                    await firebaseDb.collection('users').doc(user.uid).set({
+                        name: displayName,
+                        email: email,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        photoURL: null
+                    });
+
+                    addNotification('success', 'Conta Criada', `Bem-vindo, ${displayName}!`);
+                    return true;
+                } catch (error) {
+                    console.error('Erro ao criar conta:', error);
+                    addNotification('error', 'Erro', error.message);
+                    return false;
+                }
+            };
+
+            const signInWithFirebase = async (email, password) => {
+                try {
+                    if (!firebaseAuth) {
+                        throw new Error('Firebase não inicializado');
+                    }
+
+                    await firebaseAuth.signInWithEmailAndPassword(email, password);
+                    addNotification('success', 'Login', 'Login realizado com sucesso!');
+                    return true;
+                } catch (error) {
+                    console.error('Erro ao fazer login:', error);
+                    addNotification('error', 'Erro', error.message);
+                    return false;
+                }
+            };
+
+            const signInWithGoogle = async () => {
+                try {
+                    if (!firebaseAuth) {
+                        throw new Error('Firebase não inicializado');
+                    }
+
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    await firebaseAuth.signInWithPopup(provider);
+                    addNotification('success', 'Login', 'Login com Google realizado!');
+                    return true;
+                } catch (error) {
+                    console.error('Erro ao fazer login com Google:', error);
+                    addNotification('error', 'Erro', error.message);
+                    return false;
+                }
+            };
+
+            const signOutFirebase = async () => {
+                try {
+                    if (!firebaseAuth) return;
+
+                    await firebaseAuth.signOut();
+                    setIsLoggedIn(false);
+                    setCurrentUser(null);
+                    setShowLogin(true);
+                    addNotification('success', 'Logout', 'Sessão encerrada');
+                } catch (error) {
+                    console.error('Erro ao fazer logout:', error);
+                    addNotification('error', 'Erro', error.message);
+                }
+            };
+
+            // Carregar projetos do usuário
+            const loadUserProjects = async (userId, db) => {
+                try {
+                    setSyncStatus('syncing');
+
+                    const projectsRef = db.collection('projects');
+                    const query = projectsRef.where('ownerId', '==', userId);
+
+                    // Listener em tempo real
+                    query.onSnapshot((snapshot) => {
+                        const loadedProjects = [];
+                        snapshot.forEach((doc) => {
+                            loadedProjects.push({ id: doc.id, ...doc.data() });
+                        });
+
+                        setProjects(loadedProjects);
+                        setSyncStatus('connected');
+                    });
+
+                } catch (error) {
+                    console.error('Erro ao carregar projetos:', error);
+                    setSyncStatus('error');
+                }
+            };
+
+            // Salvar projeto no Firestore
+            const saveProjectToFirebase = async (project) => {
+                if (!firebaseDb || !syncEnabled) return;
+
+                try {
+                    setSyncStatus('syncing');
+
+                    const projectData = {
+                        ...project,
+                        ownerId: currentUser.id,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        members: {
+                            [currentUser.id]: {
+                                role: 'owner',
+                                name: currentUser.name,
+                                email: currentUser.email
+                            }
+                        }
+                    };
+
+                    if (project.id) {
+                        // Atualizar existente
+                        await firebaseDb.collection('projects').doc(project.id).update(projectData);
+                    } else {
+                        // Criar novo
+                        const docRef = await firebaseDb.collection('projects').add({
+                            ...projectData,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        project.id = docRef.id;
+                    }
+
+                    setSyncStatus('connected');
+                } catch (error) {
+                    console.error('Erro ao salvar projeto:', error);
+                    setSyncStatus('error');
+                }
+            };
+
+            // Salvar tarefa no Firestore
+            const saveTaskToFirebase = async (task, projectId) => {
+                if (!firebaseDb || !syncEnabled || !projectId) return;
+
+                try {
+                    const taskData = {
+                        ...task,
+                        projectId: projectId,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    const taskRef = firebaseDb.collection('projects').doc(projectId).collection('tasks');
+
+                    if (task.id) {
+                        await taskRef.doc(task.id).update(taskData);
+                    } else {
+                        const docRef = await taskRef.add({
+                            ...taskData,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        task.id = docRef.id;
+                    }
+                } catch (error) {
+                    console.error('Erro ao salvar tarefa:', error);
+                }
+            };
+
+            // Carregar tarefas do projeto
+            const loadProjectTasks = (projectId) => {
+                if (!firebaseDb || !projectId) return;
+
+                const tasksRef = firebaseDb.collection('projects').doc(projectId).collection('tasks');
+
+                tasksRef.onSnapshot((snapshot) => {
+                    const loadedTasks = [];
+                    snapshot.forEach((doc) => {
+                        loadedTasks.push({ id: doc.id, ...doc.data() });
+                    });
+                    setTasks(loadedTasks);
+                });
+            };
+
+            // Adicionar membro à equipe
+            const addTeamMember = async (projectId, memberEmail, role = 'editor') => {
+                if (!firebaseDb) return;
+
+                try {
+                    // Buscar usuário por email
+                    const usersRef = firebaseDb.collection('users');
+                    const userQuery = await usersRef.where('email', '==', memberEmail).get();
+
+                    if (userQuery.empty) {
+                        addNotification('error', 'Erro', 'Usuário não encontrado');
+                        return false;
+                    }
+
+                    const memberDoc = userQuery.docs[0];
+                    const memberId = memberDoc.id;
+                    const memberData = memberDoc.data();
+
+                    // Adicionar ao projeto
+                    await firebaseDb.collection('projects').doc(projectId).update({
+                        [`members.${memberId}`]: {
+                            role: role,
+                            name: memberData.name,
+                            email: memberData.email,
+                            addedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }
+                    });
+
+                    addNotification('success', 'Equipe', `${memberData.name} adicionado(a) ao projeto`);
+                    return true;
+                } catch (error) {
+                    console.error('Erro ao adicionar membro:', error);
+                    addNotification('error', 'Erro', error.message);
+                    return false;
+                }
+            };
+
+            // Migrar dados locais para Firebase
+            const migrateLocalToFirebase = async () => {
+                if (!firebaseDb || !currentUser) {
+                    addNotification('error', 'Erro', 'Firebase não configurado ou usuário não logado');
+                    return;
+                }
+
+                try {
+                    setSyncStatus('syncing');
+                    addNotification('info', 'Migração', 'Iniciando migração de dados...');
+
+                    const localProjects = JSON.parse(localStorage.getItem('pmbok_projects') || '[]');
+                    const localTasks = JSON.parse(localStorage.getItem('pmbok_tasks') || '[]');
+                    const localRisks = JSON.parse(localStorage.getItem('pmbok_risks') || '[]');
+
+                    let migratedProjects = 0;
+                    let migratedTasks = 0;
+                    let migratedRisks = 0;
+
+                    // Migrar projetos
+                    for (const project of localProjects) {
+                        await saveProjectToFirebase(project);
+                        migratedProjects++;
+                    }
+
+                    // Migrar tarefas
+                    for (const task of localTasks) {
+                        if (task.projectId) {
+                            await saveTaskToFirebase(task, task.projectId);
+                            migratedTasks++;
+                        }
+                    }
+
+                    // Migrar riscos (similar)
+                    for (const risk of localRisks) {
+                        if (risk.projectId) {
+                            await firebaseDb.collection('projects').doc(risk.projectId)
+                                .collection('risks').add(risk);
+                            migratedRisks++;
+                        }
+                    }
+
+                    setSyncStatus('connected');
+                    setSyncEnabled(true);
+
+                    addNotification('success', 'Migração Concluída',
+                        `${migratedProjects} projetos, ${migratedTasks} tarefas, ${migratedRisks} riscos migrados`);
+
+                } catch (error) {
+                    console.error('Erro na migração:', error);
+                    setSyncStatus('error');
+                    addNotification('error', 'Erro', 'Falha na migração: ' + error.message);
+                }
+            };
+
+            // ==================== FIM FIREBASE FUNCTIONS ====================
 
             // Função para buscar no manual do usuário
             const searchUserManual = (userQuestion) => {
@@ -3441,6 +3791,207 @@ Seja profissional, conciso e use linguagem executiva.`;
                                                     >
                                                         Importar Dados (Restore)
                                                     </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Integrações */}
+                                            <div className="border-t pt-4">
+                                                <h3 className="font-semibold mb-4 text-lg">🔗 Integrações</h3>
+
+                                                {/* Firebase */}
+                                                <div className="mb-6 p-4 bg-gray-50 rounded">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <h4 className="font-semibold">🔥 Firebase (Colaboração)</h4>
+                                                        <span className={`px-2 py-1 rounded text-xs ${
+                                                            syncStatus === 'connected' ? 'bg-green-100 text-green-700' :
+                                                            syncStatus === 'syncing' ? 'bg-blue-100 text-blue-700' :
+                                                            syncStatus === 'error' ? 'bg-red-100 text-red-700' :
+                                                            'bg-gray-100 text-gray-700'
+                                                        }`}>
+                                                            {syncStatus === 'connected' ? '✅ Conectado' :
+                                                             syncStatus === 'syncing' ? '🔄 Sincronizando' :
+                                                             syncStatus === 'error' ? '❌ Erro' :
+                                                             '⚪ Desconectado'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-600 mb-3">
+                                                        Sincronize projetos em tempo real e colabore com sua equipe
+                                                    </p>
+                                                    {!firebaseInitialized ? (
+                                                        <div className="space-y-2">
+                                                            <textarea
+                                                                placeholder='Cole aqui a configuração Firebase JSON:
+{
+  "apiKey": "...",
+  "authDomain": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'
+                                                                className="w-full border rounded p-2 text-xs font-mono h-32"
+                                                                onChange={(e) => {
+                                                                    try {
+                                                                        const config = JSON.parse(e.target.value);
+                                                                        setFirebaseConfig(config);
+                                                                    } catch(err) {
+                                                                        // Invalid JSON, ignore
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (firebaseConfig) {
+                                                                        initializeFirebase(firebaseConfig);
+                                                                    } else {
+                                                                        addNotification('error', 'Erro', 'Cole a configuração Firebase primeiro');
+                                                                    }
+                                                                }}
+                                                                className="w-full px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+                                                            >
+                                                                🔥 Conectar Firebase
+                                                            </button>
+                                                            <a
+                                                                href="https://console.firebase.google.com/"
+                                                                target="_blank"
+                                                                className="block text-center text-sm text-blue-600 hover:underline"
+                                                            >
+                                                                📖 Ver guia de configuração
+                                                            </a>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-2">
+                                                            <div className="flex items-center gap-2 text-sm">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={syncEnabled}
+                                                                    onChange={(e) => setSyncEnabled(e.target.checked)}
+                                                                />
+                                                                <label>Ativar sincronização automática</label>
+                                                            </div>
+                                                            <button
+                                                                onClick={migrateLocalToFirebase}
+                                                                className="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+                                                            >
+                                                                📤 Migrar dados locais para Firebase
+                                                            </button>
+                                                            {activeProject && (
+                                                                <div className="mt-3 p-3 bg-white rounded border">
+                                                                    <p className="font-semibold text-sm mb-2">Equipe do Projeto:</p>
+                                                                    {activeProject.members && Object.keys(activeProject.members).map(memberId => {
+                                                                        const member = activeProject.members[memberId];
+                                                                        return (
+                                                                            <div key={memberId} className="flex items-center justify-between text-sm py-1">
+                                                                                <span>{member.name} ({member.role})</span>
+                                                                                <span className="text-xs text-gray-500">{member.email}</span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                    <div className="mt-2 flex gap-2">
+                                                                        <input
+                                                                            type="email"
+                                                                            placeholder="Email do membro"
+                                                                            id="newMemberEmail"
+                                                                            className="flex-1 border rounded px-2 py-1 text-sm"
+                                                                        />
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const email = document.getElementById('newMemberEmail').value;
+                                                                                if (email) {
+                                                                                    addTeamMember(activeProject.id, email);
+                                                                                    document.getElementById('newMemberEmail').value = '';
+                                                                                }
+                                                                            }}
+                                                                            className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                                                                        >
+                                                                            + Adicionar
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* ClickUp */}
+                                                <div className="mb-6 p-4 bg-gray-50 rounded">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <h4 className="font-semibold">⚡ ClickUp</h4>
+                                                        <span className={`px-2 py-1 rounded text-xs ${
+                                                            clickupConnected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                                                        }`}>
+                                                            {clickupConnected ? '✅ Conectado' : '⚪ Desconectado'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-600 mb-3">
+                                                        Sincronize tarefas com o ClickUp
+                                                    </p>
+                                                    <div className="space-y-2">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="API Key do ClickUp"
+                                                            value={clickupApiKey}
+                                                            onChange={(e) => setClickupApiKey(e.target.value)}
+                                                            className="w-full border rounded px-3 py-2 text-sm"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Workspace ID (opcional)"
+                                                            value={clickupWorkspaceId}
+                                                            onChange={(e) => setClickupWorkspaceId(e.target.value)}
+                                                            className="w-full border rounded px-3 py-2 text-sm"
+                                                        />
+                                                        <button
+                                                            onClick={() => {
+                                                                if (clickupApiKey) {
+                                                                    setClickupConnected(true);
+                                                                    addNotification('success', 'ClickUp', 'Conectado! (implementação em progresso)');
+                                                                } else {
+                                                                    addNotification('error', 'Erro', 'Insira a API Key primeiro');
+                                                                }
+                                                            }}
+                                                            className="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+                                                        >
+                                                            ⚡ Conectar ClickUp
+                                                        </button>
+                                                        <a
+                                                            href="https://app.clickup.com/settings/apps"
+                                                            target="_blank"
+                                                            className="block text-center text-sm text-blue-600 hover:underline"
+                                                        >
+                                                            🔑 Obter API Key no ClickUp
+                                                        </a>
+                                                    </div>
+                                                </div>
+
+                                                {/* MS Project */}
+                                                <div className="p-4 bg-gray-50 rounded">
+                                                    <h4 className="font-semibold mb-2">📊 MS Project</h4>
+                                                    <p className="text-sm text-gray-600 mb-3">
+                                                        Import/Export projetos em formato XML
+                                                    </p>
+                                                    <div className="space-y-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                if (!activeProject) {
+                                                                    addNotification('error', 'Erro', 'Selecione um projeto primeiro');
+                                                                    return;
+                                                                }
+                                                                addNotification('info', 'MS Project', 'Exportação implementada em breve');
+                                                            }}
+                                                            className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                        >
+                                                            📤 Exportar para MS Project XML
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                addNotification('info', 'MS Project', 'Importação implementada em breve');
+                                                            }}
+                                                            className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                                                        >
+                                                            📥 Importar de MS Project XML
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
