@@ -267,19 +267,36 @@ Abra uma [issue no GitHub](https://github.com/gustavohenrique55/Project-Manageme
 
 ---
 
-## 📄 **Licença**
+## 📄 **Licença e Copyright**
 
-MIT License - Livre para uso pessoal e comercial
+### 🔒 **LICENÇA PROPRIETÁRIA - TODOS OS DIREITOS RESERVADOS**
 
 ```
-Copyright (c) 2024 Project Manager System Pro
+Copyright © 2024 Gustavo Henrique
+TODOS OS DIREITOS RESERVADOS
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software.
+Este software é propriedade exclusiva de Gustavo Henrique.
 ```
+
+### ⚖️ **Termos de Uso:**
+
+**PERMITIDO:**
+- ✅ Visualizar código para fins educacionais
+- ✅ Usar em UM ambiente de produção
+- ✅ Modificar para uso interno próprio
+
+**PROIBIDO sem autorização:**
+- ❌ Redistribuir, vender ou sublicenciar
+- ❌ Remover avisos de copyright
+- ❌ Criar produtos derivados comerciais
+- ❌ Publicar em outros repositórios
+
+### 📧 **Licenciamento Comercial:**
+
+Para uso corporativo ou redistribuição, contate:
+- **GitHub:** @gustavohenrique55
+- **Licença Completa:** Veja arquivo [LICENSE](LICENSE)
+- **Copyright:** Veja arquivo [COPYRIGHT.txt](COPYRIGHT.txt)
 
 ---
 

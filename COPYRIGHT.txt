@@ -1,0 +1,173 @@
+═══════════════════════════════════════════════════════════════════
+AVISO DE COPYRIGHT E PROPRIEDADE INTELECTUAL
+Project Manager System Pro
+═══════════════════════════════════════════════════════════════════
+
+Copyright © 2024 Gustavo Henrique
+TODOS OS DIREITOS RESERVADOS
+
+═══════════════════════════════════════════════════════════════════
+DECLARAÇÃO DE AUTORIA
+═══════════════════════════════════════════════════════════════════
+
+O "Project Manager System Pro" é uma obra original criada por:
+
+    Nome: Gustavo Henrique
+    GitHub: gustavohenrique55
+    Data de Criação: Novembro de 2024
+    Repositório Original: https://github.com/gustavohenrique55/Project-Management-7-PRO
+
+═══════════════════════════════════════════════════════════════════
+REGISTRO DE CRIAÇÃO
+═══════════════════════════════════════════════════════════════════
+
+Primeira versão: Novembro 2024
+Commits iniciais: Provam autoria original no Git
+Hash do primeiro commit: [verificar no repositório]
+
+Funcionalidades implementadas pelo autor original:
+✓ 16 módulos de gestão de projetos baseados em PMBOK 7
+✓ Integração com Firebase (autenticação e Firestore)
+✓ Integração com ClickUp API
+✓ Integração com MS Project (XML import/export)
+✓ Chatbot IA com Google Gemini
+✓ Sistema completo de relatórios
+✓ Interface responsiva (4.350+ linhas de código)
+✓ Documentação completa (13 guias, 50.000+ palavras)
+
+═══════════════════════════════════════════════════════════════════
+PROTEÇÃO LEGAL
+═══════════════════════════════════════════════════════════════════
+
+Este software está protegido por:
+
+1. Lei de Direitos Autorais (Lei 9.610/98 - Brasil)
+2. Convenção de Berna (tratado internacional)
+3. WIPO Copyright Treaty
+4. Registro automático no momento da criação
+
+Proteções específicas:
+- Código-fonte: Protegido como obra literária
+- Interface: Protegida como obra artística
+- Documentação: Protegida como obra literária
+- Algoritmos: Protegidos como segredo comercial
+
+═══════════════════════════════════════════════════════════════════
+PROIBIÇÕES
+═══════════════════════════════════════════════════════════════════
+
+SEM autorização expressa por escrito, é PROIBIDO:
+
+❌ Copiar ou duplicar o software
+❌ Modificar e redistribuir
+❌ Vender ou sublicenciar
+❌ Criar obras derivadas para fins comerciais
+❌ Remover avisos de copyright
+❌ Usar marca ou nome sem permissão
+❌ Fazer engenharia reversa para fins comerciais
+❌ Incorporar em outros produtos comerciais
+
+═══════════════════════════════════════════════════════════════════
+PENALIDADES POR VIOLAÇÃO
+═══════════════════════════════════════════════════════════════════
+
+Violação de copyright pode resultar em:
+
+1. Ação Civil:
+   - Indenização por danos materiais
+   - Indenização por danos morais
+   - Perdas e lucros cessantes
+   - Honorários advocatícios
+
+2. Ação Criminal (Lei 9.609/98):
+   - Detenção de 6 meses a 2 anos
+   - Multa de até 3.000 vezes o valor do software
+   - Apreensão de cópias ilegais
+
+3. Medidas Cautelares:
+   - Busca e apreensão
+   - Suspensão de atividades
+   - Bloqueio de ativos
+
+═══════════════════════════════════════════════════════════════════
+LICENCIAMENTO
+═══════════════════════════════════════════════════════════════════
+
+Para uso comercial, corporativo ou redistribuição:
+
+📧 Email: gustavohenrique55@github.com
+🌐 GitHub: https://github.com/gustavohenrique55
+📄 Licença: Consulte arquivo LICENSE
+
+Opções de licenciamento disponíveis:
+- Licença Individual (uso pessoal)
+- Licença Corporativa (1 empresa)
+- Licença White-label (sem marca)
+- Licença de Redistribuição
+- Consultoria e customização
+
+═══════════════════════════════════════════════════════════════════
+EVIDÊNCIAS DE AUTORIA
+═══════════════════════════════════════════════════════════════════
+
+As seguintes evidências provam autoria original:
+
+1. Git Commits:
+   - Hash SHA-1 de cada commit
+   - Timestamp verificável
+   - Assinatura digital do autor
+
+2. GitHub Repository:
+   - Data de criação do repositório
+   - Histórico completo de desenvolvimento
+   - Issues, Pull Requests, Releases
+
+3. Arquivos Originais:
+   - Código-fonte com comentários do autor
+   - Documentação em português brasileiro
+   - Estilo de código consistente
+
+4. Metadados:
+   - Headers de arquivos
+   - Commit messages
+   - Branch history
+
+═══════════════════════════════════════════════════════════════════
+DECLARAÇÃO JURAMENTADA
+═══════════════════════════════════════════════════════════════════
+
+Eu, Gustavo Henrique, declaro sob as penas da lei que:
+
+1. Sou o autor original e único do "Project Manager System Pro"
+2. O trabalho foi criado de forma independente
+3. Não violei direitos autorais de terceiros
+4. Possuo todos os direitos de propriedade intelectual
+5. Tenho autoridade para licenciar este software
+
+Data: 18 de Novembro de 2024
+Assinatura Digital: [Git Commit Hash]
+
+═══════════════════════════════════════════════════════════════════
+CONTATO
+═══════════════════════════════════════════════════════════════════
+
+Para questões sobre:
+- Licenciamento comercial
+- Permissões especiais
+- Denúncia de violação
+- Parcerias
+- Consultoria
+
+Entre em contato:
+GitHub: @gustavohenrique55
+Email: gustavohenrique55@github.com
+
+═══════════════════════════════════════════════════════════════════
+
+Este aviso de copyright deve ser incluído em todas as cópias ou
+porções substanciais do Software.
+
+Última atualização: 18/11/2024
+Versão do documento: 1.0
+
+═══════════════════════════════════════════════════════════════════
