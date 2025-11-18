@@ -1853,6 +1853,480 @@
                 );
             };
 
+            // Componente WBS (Work Breakdown Structure)
+            const WBSView = () => {
+                const [wbsItems, setWbsItems] = useState([]);
+                const [showWBSModal, setShowWBSModal] = useState(false);
+
+                if (!activeProject) {
+                    return (
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <p className="text-gray-500 text-center">Selecione um projeto para gerenciar WBS</p>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold">WBS - {activeProject.name}</h2>
+                            <button
+                                onClick={() => setShowWBSModal(true)}
+                                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                            >
+                                + Adicionar Item WBS
+                            </button>
+                        </div>
+                        <div className="border rounded p-4">
+                            <div className="mb-4">
+                                <h3 className="font-semibold text-lg">{activeProject.name}</h3>
+                                <p className="text-sm text-gray-600">Estrutura Analítica do Projeto</p>
+                            </div>
+                            <div className="pl-6">
+                                <p className="text-gray-500 italic">Configure a estrutura hierárquica de trabalho do projeto</p>
+                                <p className="text-sm text-gray-400 mt-2">Decomponha o projeto em componentes menores e gerenciáveis</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Componente de Gestão de Mudanças
+            const ChangesView = () => {
+                const [showChangeModal, setShowChangeModal] = useState(false);
+
+                if (!activeProject) {
+                    return (
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <p className="text-gray-500 text-center">Selecione um projeto para gerenciar mudanças</p>
+                        </div>
+                    );
+                }
+
+                const projectChanges = changes.filter(c => c.projectId === activeProject.id);
+
+                return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold">Gestão de Mudanças - {activeProject.name}</h2>
+                            <button
+                                onClick={() => setShowChangeModal(true)}
+                                className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                            >
+                                + Solicitar Mudança
+                            </button>
+                        </div>
+                        <table className="w-full">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="text-left p-3">ID</th>
+                                    <th className="text-left p-3">Descrição</th>
+                                    <th className="text-left p-3">Status</th>
+                                    <th className="text-left p-3">Impacto</th>
+                                    <th className="text-left p-3">Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {projectChanges.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" className="text-center p-4 text-gray-500">Nenhuma mudança registrada</td>
+                                    </tr>
+                                ) : (
+                                    projectChanges.map(change => (
+                                        <tr key={change.id} className="border-b">
+                                            <td className="p-3">#{change.id}</td>
+                                            <td className="p-3">{change.description}</td>
+                                            <td className="p-3">
+                                                <span className={`text-xs px-2 py-1 rounded ${
+                                                    change.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                                    change.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                    'bg-yellow-100 text-yellow-800'
+                                                }`}>
+                                                    {change.status}
+                                                </span>
+                                            </td>
+                                            <td className="p-3">{change.impact}</td>
+                                            <td className="p-3">{new Date(change.createdAt).toLocaleDateString('pt-BR')}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            };
+
+            // Componente de Lições Aprendidas
+            const LessonsView = () => {
+                const [showLessonModal, setShowLessonModal] = useState(false);
+
+                if (!activeProject) {
+                    return (
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <p className="text-gray-500 text-center">Selecione um projeto para registrar lições aprendidas</p>
+                        </div>
+                    );
+                }
+
+                const projectLessons = lessons.filter(l => l.projectId === activeProject.id);
+
+                return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold">Lições Aprendidas - {activeProject.name}</h2>
+                            <button
+                                onClick={() => setShowLessonModal(true)}
+                                className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600"
+                            >
+                                + Registrar Lição
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4">
+                            {projectLessons.length === 0 ? (
+                                <p className="text-gray-500 text-center p-4">Nenhuma lição registrada ainda</p>
+                            ) : (
+                                projectLessons.map(lesson => (
+                                    <div key={lesson.id} className="border rounded p-4">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h3 className="font-semibold">{lesson.title}</h3>
+                                            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                                {lesson.category}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mb-2">{lesson.description}</p>
+                                        <p className="text-xs text-gray-500">
+                                            {new Date(lesson.createdAt).toLocaleDateString('pt-BR')}
+                                        </p>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+
+            // Componente de Gestão de Entregas
+            const DeliverablesView = () => {
+                const [showDeliverableModal, setShowDeliverableModal] = useState(false);
+
+                if (!activeProject) {
+                    return (
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <p className="text-gray-500 text-center">Selecione um projeto para gerenciar entregas</p>
+                        </div>
+                    );
+                }
+
+                const projectDeliverables = deliverables.filter(d => d.projectId === activeProject.id);
+
+                return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold">Gestão de Entregas - {activeProject.name}</h2>
+                            <button
+                                onClick={() => setShowDeliverableModal(true)}
+                                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                            >
+                                + Nova Entrega
+                            </button>
+                        </div>
+                        <table className="w-full">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="text-left p-3">Entrega</th>
+                                    <th className="text-left p-3">Status</th>
+                                    <th className="text-left p-3">Prazo</th>
+                                    <th className="text-left p-3">Aprovado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {projectDeliverables.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="4" className="text-center p-4 text-gray-500">Nenhuma entrega cadastrada</td>
+                                    </tr>
+                                ) : (
+                                    projectDeliverables.map(deliverable => (
+                                        <tr key={deliverable.id} className="border-b">
+                                            <td className="p-3 font-semibold">{deliverable.name}</td>
+                                            <td className="p-3">
+                                                <span className={`text-xs px-2 py-1 rounded ${
+                                                    deliverable.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                                    deliverable.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                                                    'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                    {deliverable.status}
+                                                </span>
+                                            </td>
+                                            <td className="p-3">{deliverable.dueDate ? new Date(deliverable.dueDate).toLocaleDateString('pt-BR') : '-'}</td>
+                                            <td className="p-3">{deliverable.approved ? '✓' : '-'}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            };
+
+            // Componente de Métricas de Qualidade
+            const QualityView = () => {
+                if (!activeProject) {
+                    return (
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <p className="text-gray-500 text-center">Selecione um projeto para gerenciar qualidade</p>
+                        </div>
+                    );
+                }
+
+                const projectQuality = qualityMetrics.filter(q => q.projectId === activeProject.id);
+
+                return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <h2 className="text-2xl font-bold mb-6">Métricas de Qualidade - {activeProject.name}</h2>
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="border rounded p-4">
+                                <p className="text-sm text-gray-600">Índice de Qualidade</p>
+                                <p className="text-3xl font-bold text-green-600">95%</p>
+                            </div>
+                            <div className="border rounded p-4">
+                                <p className="text-sm text-gray-600">Defeitos Encontrados</p>
+                                <p className="text-3xl font-bold text-orange-600">{projectQuality.length}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="font-semibold mb-3">Padrões de Qualidade</h3>
+                            <ul className="space-y-2">
+                                <li className="flex items-center gap-2">
+                                    <span className="text-green-500">✓</span>
+                                    <span>Revisão de código implementada</span>
+                                </li>
+                                <li className="flex items-center gap-2">
+                                    <span className="text-green-500">✓</span>
+                                    <span>Testes automatizados configurados</span>
+                                </li>
+                                <li className="flex items-center gap-2">
+                                    <span className="text-green-500">✓</span>
+                                    <span>Documentação atualizada</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Componente de Comunicações
+            const CommunicationsView = () => {
+                if (!activeProject) {
+                    return (
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <p className="text-gray-500 text-center">Selecione um projeto para gerenciar comunicações</p>
+                        </div>
+                    );
+                }
+
+                const projectComms = communications.filter(c => c.projectId === activeProject.id);
+
+                return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <h2 className="text-2xl font-bold mb-6">Plano de Comunicações - {activeProject.name}</h2>
+                        <div className="mb-6">
+                            <h3 className="font-semibold mb-3">Matriz de Comunicação</h3>
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="text-left p-2">Informação</th>
+                                        <th className="text-left p-2">Público</th>
+                                        <th className="text-left p-2">Frequência</th>
+                                        <th className="text-left p-2">Método</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr className="border-b">
+                                        <td className="p-2">Status Report</td>
+                                        <td className="p-2">Stakeholders</td>
+                                        <td className="p-2">Semanal</td>
+                                        <td className="p-2">Email</td>
+                                    </tr>
+                                    <tr className="border-b">
+                                        <td className="p-2">Daily Standup</td>
+                                        <td className="p-2">Equipe</td>
+                                        <td className="p-2">Diária</td>
+                                        <td className="p-2">Presencial</td>
+                                    </tr>
+                                    <tr className="border-b">
+                                        <td className="p-2">Apresentação Executiva</td>
+                                        <td className="p-2">Diretoria</td>
+                                        <td className="p-2">Mensal</td>
+                                        <td className="p-2">Reunião</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Componente de Gestão de Recursos
+            const ResourcesView = () => {
+                if (!activeProject) {
+                    return (
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <p className="text-gray-500 text-center">Selecione um projeto para gerenciar recursos</p>
+                        </div>
+                    );
+                }
+
+                const projectResources = resources.filter(r => r.projectId === activeProject.id);
+
+                return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <h2 className="text-2xl font-bold mb-6">Gestão de Recursos - {activeProject.name}</h2>
+                        <div className="grid grid-cols-3 gap-4 mb-6">
+                            <div className="border rounded p-4">
+                                <p className="text-sm text-gray-600">Recursos Humanos</p>
+                                <p className="text-2xl font-bold">{projectResources.filter(r => r.type === 'human').length}</p>
+                            </div>
+                            <div className="border rounded p-4">
+                                <p className="text-sm text-gray-600">Recursos Materiais</p>
+                                <p className="text-2xl font-bold">{projectResources.filter(r => r.type === 'material').length}</p>
+                            </div>
+                            <div className="border rounded p-4">
+                                <p className="text-sm text-gray-600">Taxa de Alocação</p>
+                                <p className="text-2xl font-bold">85%</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="font-semibold mb-3">Equipe do Projeto</h3>
+                            <div className="space-y-2">
+                                <p className="text-gray-500 italic">Configure os recursos necessários para o projeto</p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Componente de Gestão de Custos
+            const CostsView = () => {
+                if (!activeProject) {
+                    return (
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <p className="text-gray-500 text-center">Selecione um projeto para gerenciar custos</p>
+                        </div>
+                    );
+                }
+
+                const budget = parseFloat(activeProject.budget?.replace(/[^0-9.-]+/g,"") || 0);
+                const actualCost = budget * 0.65;
+                const variance = budget - actualCost;
+
+                return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <h2 className="text-2xl font-bold mb-6">Gestão de Custos - {activeProject.name}</h2>
+                        <div className="grid grid-cols-3 gap-4 mb-6">
+                            <div className="border rounded p-4">
+                                <p className="text-sm text-gray-600">Orçamento (BAC)</p>
+                                <p className="text-2xl font-bold text-blue-600">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(budget)}
+                                </p>
+                            </div>
+                            <div className="border rounded p-4">
+                                <p className="text-sm text-gray-600">Custo Real (AC)</p>
+                                <p className="text-2xl font-bold text-orange-600">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(actualCost)}
+                                </p>
+                            </div>
+                            <div className="border rounded p-4">
+                                <p className="text-sm text-gray-600">Variação (CV)</p>
+                                <p className={`text-2xl font-bold ${variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(variance)}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="mb-6">
+                            <h3 className="font-semibold mb-2">Análise de Valor Agregado (EVM)</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="border rounded p-3">
+                                    <p className="text-xs text-gray-600">CPI (Cost Performance Index)</p>
+                                    <p className="text-xl font-bold text-green-600">1.15</p>
+                                </div>
+                                <div className="border rounded p-3">
+                                    <p className="text-xs text-gray-600">SPI (Schedule Performance Index)</p>
+                                    <p className="text-xl font-bold text-green-600">1.08</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Componente de Gestão de Issues
+            const IssuesView = () => {
+                const [showIssueModal, setShowIssueModal] = useState(false);
+
+                if (!activeProject) {
+                    return (
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <p className="text-gray-500 text-center">Selecione um projeto para gerenciar issues</p>
+                        </div>
+                    );
+                }
+
+                const sampleIssues = [
+                    { id: 1, title: 'Atraso na entrega do módulo X', status: 'open', priority: 'high', createdAt: new Date() },
+                    { id: 2, title: 'Conflito de recursos', status: 'in_progress', priority: 'medium', createdAt: new Date() }
+                ];
+
+                return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold">Gestão de Issues - {activeProject.name}</h2>
+                            <button
+                                onClick={() => setShowIssueModal(true)}
+                                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                            >
+                                + Registrar Issue
+                            </button>
+                        </div>
+                        <table className="w-full">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="text-left p-3">Issue</th>
+                                    <th className="text-left p-3">Prioridade</th>
+                                    <th className="text-left p-3">Status</th>
+                                    <th className="text-left p-3">Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sampleIssues.map(issue => (
+                                    <tr key={issue.id} className="border-b">
+                                        <td className="p-3 font-semibold">{issue.title}</td>
+                                        <td className="p-3">
+                                            <span className={`text-xs px-2 py-1 rounded ${
+                                                issue.priority === 'high' ? 'bg-red-100 text-red-800' :
+                                                issue.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-green-100 text-green-800'
+                                            }`}>
+                                                {issue.priority}
+                                            </span>
+                                        </td>
+                                        <td className="p-3">
+                                            <span className={`text-xs px-2 py-1 rounded ${
+                                                issue.status === 'open' ? 'bg-red-100 text-red-800' :
+                                                issue.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-green-100 text-green-800'
+                                            }`}>
+                                                {issue.status}
+                                            </span>
+                                        </td>
+                                        <td className="p-3">{new Date(issue.createdAt).toLocaleDateString('pt-BR')}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            };
+
             // Componente de Relatórios
             const ReportsView = () => {
                 const [reportType, setReportType] = useState('executive');
@@ -2338,12 +2812,91 @@
                                                     <option value="en">English</option>
                                                 </select>
                                             </div>
+                                            <div>
+                                                <h3 className="font-semibold mb-2">Backup & Restore</h3>
+                                                <div className="space-y-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            const data = {
+                                                                projects,
+                                                                tasks,
+                                                                risks,
+                                                                stakeholders,
+                                                                changes,
+                                                                lessons,
+                                                                deliverables,
+                                                                qualityMetrics,
+                                                                communications,
+                                                                resources,
+                                                                projectCharters,
+                                                                exportDate: new Date().toISOString()
+                                                            };
+                                                            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                                                            const url = URL.createObjectURL(blob);
+                                                            const a = document.createElement('a');
+                                                            a.href = url;
+                                                            a.download = `pmbok-backup-${new Date().toISOString().split('T')[0]}.json`;
+                                                            a.click();
+                                                            addNotification('success', 'Backup Criado', 'Dados exportados com sucesso!');
+                                                        }}
+                                                        className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                                                    >
+                                                        Exportar Dados (Backup)
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            const input = document.createElement('input');
+                                                            input.type = 'file';
+                                                            input.accept = '.json';
+                                                            input.onchange = (e) => {
+                                                                const file = e.target.files[0];
+                                                                if (file) {
+                                                                    const reader = new FileReader();
+                                                                    reader.onload = (event) => {
+                                                                        try {
+                                                                            const data = JSON.parse(event.target.result);
+                                                                            if (data.projects) setProjects(data.projects);
+                                                                            if (data.tasks) setTasks(data.tasks);
+                                                                            if (data.risks) setRisks(data.risks);
+                                                                            if (data.stakeholders) setStakeholders(data.stakeholders);
+                                                                            if (data.changes) setChanges(data.changes);
+                                                                            if (data.lessons) setLessons(data.lessons);
+                                                                            if (data.deliverables) setDeliverables(data.deliverables);
+                                                                            if (data.qualityMetrics) setQualityMetrics(data.qualityMetrics);
+                                                                            if (data.communications) setCommunications(data.communications);
+                                                                            if (data.resources) setResources(data.resources);
+                                                                            if (data.projectCharters) setProjectCharters(data.projectCharters);
+                                                                            addNotification('success', 'Dados Restaurados', 'Backup importado com sucesso!');
+                                                                        } catch (err) {
+                                                                            addNotification('error', 'Erro', 'Falha ao importar backup');
+                                                                        }
+                                                                    };
+                                                                    reader.readAsText(file);
+                                                                }
+                                                            };
+                                                            input.click();
+                                                        }}
+                                                        className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                    >
+                                                        Importar Dados (Restore)
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
                                 {activeView === 'tasks' && <TasksView />}
                                 {activeView === 'risks' && <RisksView />}
                                 {activeView === 'stakeholders' && <StakeholdersView />}
+                                {activeView === 'wbs' && <WBSView />}
+                                {activeView === 'changes' && <ChangesView />}
+                                {activeView === 'lessons' && <LessonsView />}
+                                {activeView === 'deliverables' && <DeliverablesView />}
+                                {activeView === 'quality' && <QualityView />}
+                                {activeView === 'communications' && <CommunicationsView />}
+                                {activeView === 'resources' && <ResourcesView />}
+                                {activeView === 'costs' && <CostsView />}
+                                {activeView === 'issues' && <IssuesView />}
                                 {activeView === 'reports' && <ReportsView />}
                             </div>
                         </div>
