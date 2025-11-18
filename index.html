@@ -763,6 +763,1289 @@
                 );
             };
 
+            // Componente de Gestão de Tarefas (Kanban + Lista)
+            const TasksView = () => {
+                const [viewMode, setViewMode] = useState('kanban'); // 'kanban' ou 'list'
+                const [showTaskModal, setShowTaskModal] = useState(false);
+                const [editingTask, setEditingTask] = useState(null);
+                const [filterPriority, setFilterPriority] = useState('all');
+                const [draggedTask, setDraggedTask] = useState(null);
+
+                if (!activeProject) {
+                    return (
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <p className="text-gray-500 text-center">Selecione um projeto para gerenciar tarefas</p>
+                        </div>
+                    );
+                }
+
+                const projectTasks = tasks.filter(t => t.projectId === activeProject.id);
+                const filteredTasks = filterPriority === 'all'
+                    ? projectTasks
+                    : projectTasks.filter(t => t.priority === filterPriority);
+
+                const todoTasks = filteredTasks.filter(t => t.status === 'todo');
+                const inProgressTasks = filteredTasks.filter(t => t.status === 'in_progress');
+                const doneTasks = filteredTasks.filter(t => t.status === 'done');
+
+                const handleDragStart = (task) => {
+                    setDraggedTask(task);
+                };
+
+                const handleDragOver = (e) => {
+                    e.preventDefault();
+                };
+
+                const handleDrop = (newStatus) => {
+                    if (draggedTask) {
+                        setTasks(tasks.map(t =>
+                            t.id === draggedTask.id ? { ...t, status: newStatus } : t
+                        ));
+                        setDraggedTask(null);
+                        addNotification('success', 'Tarefa Atualizada', 'Status alterado com sucesso!');
+                    }
+                };
+
+                const deleteTask = (taskId) => {
+                    if (confirm('Deseja realmente deletar esta tarefa?')) {
+                        setTasks(tasks.filter(t => t.id !== taskId));
+                        addNotification('success', 'Tarefa Deletada', 'Tarefa removida com sucesso!');
+                    }
+                };
+
+                const TaskCard = ({ task }) => (
+                    <div
+                        draggable
+                        onDragStart={() => handleDragStart(task)}
+                        className="bg-white border rounded-lg p-3 mb-2 cursor-move hover:shadow-md transition-shadow"
+                    >
+                        <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-semibold text-sm">{task.title}</h4>
+                            <span className={`text-xs px-2 py-1 rounded ${
+                                task.priority === 'high' ? 'bg-red-100 text-red-800' :
+                                task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-green-100 text-green-800'
+                            }`}>
+                                {task.priority}
+                            </span>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-2">{task.description}</p>
+                        {task.dueDate && (
+                            <p className="text-xs text-gray-500 mb-2">
+                                📅 {new Date(task.dueDate).toLocaleDateString('pt-BR')}
+                            </p>
+                        )}
+                        {task.assignedTo && (
+                            <p className="text-xs text-gray-500 mb-2">👤 {task.assignedTo}</p>
+                        )}
+                        <div className="flex gap-1 mt-2">
+                            <button
+                                onClick={() => {
+                                    setEditingTask(task);
+                                    setShowTaskModal(true);
+                                }}
+                                className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                            >
+                                Editar
+                            </button>
+                            <button
+                                onClick={() => deleteTask(task.id)}
+                                className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                            >
+                                Deletar
+                            </button>
+                        </div>
+                    </div>
+                );
+
+                return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold">Gestão de Tarefas - {activeProject.name}</h2>
+                            <div className="flex gap-2">
+                                <select
+                                    value={filterPriority}
+                                    onChange={(e) => setFilterPriority(e.target.value)}
+                                    className="border rounded px-3 py-2 text-sm"
+                                >
+                                    <option value="all">Todas Prioridades</option>
+                                    <option value="high">Alta</option>
+                                    <option value="medium">Média</option>
+                                    <option value="low">Baixa</option>
+                                </select>
+                                <button
+                                    onClick={() => setViewMode(viewMode === 'kanban' ? 'list' : 'kanban')}
+                                    className="px-3 py-2 border rounded text-sm hover:bg-gray-50"
+                                >
+                                    {viewMode === 'kanban' ? '📋 Lista' : '📊 Kanban'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setEditingTask(null);
+                                        setShowTaskModal(true);
+                                    }}
+                                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                >
+                                    + Nova Tarefa
+                                </button>
+                            </div>
+                        </div>
+
+                        {viewMode === 'kanban' ? (
+                            <div className="grid grid-cols-3 gap-4">
+                                {/* Coluna A Fazer */}
+                                <div
+                                    onDragOver={handleDragOver}
+                                    onDrop={() => handleDrop('todo')}
+                                    className="bg-gray-50 rounded-lg p-4"
+                                >
+                                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                                        <span className="w-3 h-3 bg-gray-400 rounded-full"></span>
+                                        A Fazer ({todoTasks.length})
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {todoTasks.map(task => <TaskCard key={task.id} task={task} />)}
+                                    </div>
+                                </div>
+
+                                {/* Coluna Em Progresso */}
+                                <div
+                                    onDragOver={handleDragOver}
+                                    onDrop={() => handleDrop('in_progress')}
+                                    className="bg-blue-50 rounded-lg p-4"
+                                >
+                                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                                        <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                                        Em Progresso ({inProgressTasks.length})
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {inProgressTasks.map(task => <TaskCard key={task.id} task={task} />)}
+                                    </div>
+                                </div>
+
+                                {/* Coluna Concluído */}
+                                <div
+                                    onDragOver={handleDragOver}
+                                    onDrop={() => handleDrop('done')}
+                                    className="bg-green-50 rounded-lg p-4"
+                                >
+                                    <h3 className="font-semibold mb-3 flex items-center gap-2">
+                                        <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                                        Concluído ({doneTasks.length})
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {doneTasks.map(task => <TaskCard key={task.id} task={task} />)}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="text-left p-3">Tarefa</th>
+                                            <th className="text-left p-3">Prioridade</th>
+                                            <th className="text-left p-3">Status</th>
+                                            <th className="text-left p-3">Responsável</th>
+                                            <th className="text-left p-3">Prazo</th>
+                                            <th className="text-left p-3">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredTasks.map(task => (
+                                            <tr key={task.id} className="border-b hover:bg-gray-50">
+                                                <td className="p-3">
+                                                    <div>
+                                                        <p className="font-semibold">{task.title}</p>
+                                                        <p className="text-sm text-gray-600">{task.description}</p>
+                                                    </div>
+                                                </td>
+                                                <td className="p-3">
+                                                    <span className={`text-xs px-2 py-1 rounded ${
+                                                        task.priority === 'high' ? 'bg-red-100 text-red-800' :
+                                                        task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                                        'bg-green-100 text-green-800'
+                                                    }`}>
+                                                        {task.priority}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3">
+                                                    <select
+                                                        value={task.status}
+                                                        onChange={(e) => {
+                                                            setTasks(tasks.map(t =>
+                                                                t.id === task.id ? { ...t, status: e.target.value } : t
+                                                            ));
+                                                        }}
+                                                        className="border rounded px-2 py-1 text-sm"
+                                                    >
+                                                        <option value="todo">A Fazer</option>
+                                                        <option value="in_progress">Em Progresso</option>
+                                                        <option value="done">Concluído</option>
+                                                    </select>
+                                                </td>
+                                                <td className="p-3">{task.assignedTo || '-'}</td>
+                                                <td className="p-3">
+                                                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString('pt-BR') : '-'}
+                                                </td>
+                                                <td className="p-3">
+                                                    <div className="flex gap-1">
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingTask(task);
+                                                                setShowTaskModal(true);
+                                                            }}
+                                                            className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteTask(task.id)}
+                                                            className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                                                        >
+                                                            Deletar
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {/* Modal de Tarefa */}
+                        {showTaskModal && (
+                            <TaskModal
+                                task={editingTask}
+                                projectId={activeProject.id}
+                                onSave={(task) => {
+                                    if (editingTask) {
+                                        setTasks(tasks.map(t => t.id === task.id ? task : t));
+                                        addNotification('success', 'Tarefa Atualizada', 'Tarefa editada com sucesso!');
+                                    } else {
+                                        setTasks([...tasks, task]);
+                                        addNotification('success', 'Tarefa Criada', 'Nova tarefa adicionada!');
+                                    }
+                                    setShowTaskModal(false);
+                                    setEditingTask(null);
+                                }}
+                                onClose={() => {
+                                    setShowTaskModal(false);
+                                    setEditingTask(null);
+                                }}
+                            />
+                        )}
+                    </div>
+                );
+            };
+
+            // Modal de Tarefa
+            const TaskModal = ({ task, projectId, onSave, onClose }) => {
+                const [formData, setFormData] = useState(task || {
+                    title: '',
+                    description: '',
+                    priority: 'medium',
+                    status: 'todo',
+                    dueDate: '',
+                    assignedTo: '',
+                    estimatedHours: '',
+                    tags: ''
+                });
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    onSave({
+                        ...formData,
+                        id: task?.id || Date.now(),
+                        projectId: projectId,
+                        createdAt: task?.createdAt || new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    });
+                };
+
+                return (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+                            <h3 className="text-xl font-bold mb-4">
+                                {task ? 'Editar Tarefa' : 'Nova Tarefa'}
+                            </h3>
+                            <form onSubmit={handleSubmit}>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Título</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border rounded px-3 py-2"
+                                            required
+                                            value={formData.title}
+                                            onChange={(e) => setFormData({...formData, title: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Descrição</label>
+                                        <textarea
+                                            className="w-full border rounded px-3 py-2"
+                                            rows="3"
+                                            value={formData.description}
+                                            onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Prioridade</label>
+                                            <select
+                                                className="w-full border rounded px-3 py-2"
+                                                value={formData.priority}
+                                                onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                                            >
+                                                <option value="low">Baixa</option>
+                                                <option value="medium">Média</option>
+                                                <option value="high">Alta</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Status</label>
+                                            <select
+                                                className="w-full border rounded px-3 py-2"
+                                                value={formData.status}
+                                                onChange={(e) => setFormData({...formData, status: e.target.value})}
+                                            >
+                                                <option value="todo">A Fazer</option>
+                                                <option value="in_progress">Em Progresso</option>
+                                                <option value="done">Concluído</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Prazo</label>
+                                            <input
+                                                type="date"
+                                                className="w-full border rounded px-3 py-2"
+                                                value={formData.dueDate}
+                                                onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Horas Estimadas</label>
+                                            <input
+                                                type="number"
+                                                className="w-full border rounded px-3 py-2"
+                                                value={formData.estimatedHours}
+                                                onChange={(e) => setFormData({...formData, estimatedHours: e.target.value})}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Responsável</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border rounded px-3 py-2"
+                                            placeholder="Nome do responsável"
+                                            value={formData.assignedTo}
+                                            onChange={(e) => setFormData({...formData, assignedTo: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Tags (separadas por vírgula)</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border rounded px-3 py-2"
+                                            placeholder="frontend, urgente, bug"
+                                            value={formData.tags}
+                                            onChange={(e) => setFormData({...formData, tags: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-2 mt-6">
+                                    <button
+                                        type="button"
+                                        onClick={onClose}
+                                        className="px-4 py-2 border rounded hover:bg-gray-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                    >
+                                        Salvar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Componente de Gestão de Riscos
+            const RisksView = () => {
+                const [showRiskModal, setShowRiskModal] = useState(false);
+                const [editingRisk, setEditingRisk] = useState(null);
+                const [viewMode, setViewMode] = useState('list'); // 'list' ou 'matrix'
+
+                if (!activeProject) {
+                    return (
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <p className="text-gray-500 text-center">Selecione um projeto para gerenciar riscos</p>
+                        </div>
+                    );
+                }
+
+                const projectRisks = risks.filter(r => r.projectId === activeProject.id);
+
+                const deleteRisk = (riskId) => {
+                    if (confirm('Deseja realmente deletar este risco?')) {
+                        setRisks(risks.filter(r => r.id !== riskId));
+                        addNotification('success', 'Risco Deletado', 'Risco removido com sucesso!');
+                    }
+                };
+
+                const getRiskLevel = (probability, impact) => {
+                    const score = probability * impact;
+                    if (score >= 15) return { level: 'Crítico', color: 'bg-red-500' };
+                    if (score >= 10) return { level: 'Alto', color: 'bg-orange-500' };
+                    if (score >= 5) return { level: 'Médio', color: 'bg-yellow-500' };
+                    return { level: 'Baixo', color: 'bg-green-500' };
+                };
+
+                return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold">Gestão de Riscos - {activeProject.name}</h2>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setViewMode(viewMode === 'list' ? 'matrix' : 'list')}
+                                    className="px-3 py-2 border rounded text-sm hover:bg-gray-50"
+                                >
+                                    {viewMode === 'list' ? '📊 Matriz' : '📋 Lista'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setEditingRisk(null);
+                                        setShowRiskModal(true);
+                                    }}
+                                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                                >
+                                    + Novo Risco
+                                </button>
+                            </div>
+                        </div>
+
+                        {viewMode === 'list' ? (
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="text-left p-3">Risco</th>
+                                            <th className="text-left p-3">Categoria</th>
+                                            <th className="text-left p-3">Probabilidade</th>
+                                            <th className="text-left p-3">Impacto</th>
+                                            <th className="text-left p-3">Nível</th>
+                                            <th className="text-left p-3">Status</th>
+                                            <th className="text-left p-3">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {projectRisks.map(risk => {
+                                            const riskLevel = getRiskLevel(risk.probability, risk.impact);
+                                            return (
+                                                <tr key={risk.id} className="border-b hover:bg-gray-50">
+                                                    <td className="p-3">
+                                                        <div>
+                                                            <p className="font-semibold">{risk.title}</p>
+                                                            <p className="text-sm text-gray-600">{risk.description}</p>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                                            {risk.category}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3">{risk.probability}/5</td>
+                                                    <td className="p-3">{risk.impact}/5</td>
+                                                    <td className="p-3">
+                                                        <span className={`text-xs px-2 py-1 ${riskLevel.color} text-white rounded`}>
+                                                            {riskLevel.level}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <span className={`text-xs px-2 py-1 rounded ${
+                                                            risk.status === 'open' ? 'bg-red-100 text-red-800' :
+                                                            risk.status === 'mitigated' ? 'bg-green-100 text-green-800' :
+                                                            'bg-gray-100 text-gray-800'
+                                                        }`}>
+                                                            {risk.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <div className="flex gap-1">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingRisk(risk);
+                                                                    setShowRiskModal(true);
+                                                                }}
+                                                                className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                            >
+                                                                Editar
+                                                            </button>
+                                                            <button
+                                                                onClick={() => deleteRisk(risk.id)}
+                                                                className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                                                            >
+                                                                Deletar
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div>
+                                <h3 className="font-semibold mb-4">Matriz de Probabilidade x Impacto</h3>
+                                <div className="grid grid-cols-6 gap-1">
+                                    <div></div>
+                                    <div className="text-center text-sm font-semibold">1</div>
+                                    <div className="text-center text-sm font-semibold">2</div>
+                                    <div className="text-center text-sm font-semibold">3</div>
+                                    <div className="text-center text-sm font-semibold">4</div>
+                                    <div className="text-center text-sm font-semibold">5</div>
+
+                                    {[5, 4, 3, 2, 1].map(prob => (
+                                        <React.Fragment key={prob}>
+                                            <div className="text-right text-sm font-semibold pr-2">{prob}</div>
+                                            {[1, 2, 3, 4, 5].map(imp => {
+                                                const score = prob * imp;
+                                                const cellRisks = projectRisks.filter(r => r.probability === prob && r.impact === imp);
+                                                const bgColor = score >= 15 ? 'bg-red-100' :
+                                                              score >= 10 ? 'bg-orange-100' :
+                                                              score >= 5 ? 'bg-yellow-100' : 'bg-green-100';
+                                                return (
+                                                    <div key={`${prob}-${imp}`} className={`${bgColor} border p-2 min-h-[60px] text-xs`}>
+                                                        {cellRisks.map(r => (
+                                                            <div key={r.id} className="mb-1 p-1 bg-white rounded text-xs">
+                                                                {r.title}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                );
+                                            })}
+                                        </React.Fragment>
+                                    ))}
+                                </div>
+                                <div className="mt-4 text-sm text-gray-600">
+                                    <p><strong>Eixo Vertical:</strong> Probabilidade (1=Muito Baixa, 5=Muito Alta)</p>
+                                    <p><strong>Eixo Horizontal:</strong> Impacto (1=Muito Baixo, 5=Muito Alto)</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {showRiskModal && (
+                            <RiskModal
+                                risk={editingRisk}
+                                projectId={activeProject.id}
+                                onSave={(risk) => {
+                                    if (editingRisk) {
+                                        setRisks(risks.map(r => r.id === risk.id ? risk : r));
+                                        addNotification('success', 'Risco Atualizado', 'Risco editado com sucesso!');
+                                    } else {
+                                        setRisks([...risks, risk]);
+                                        addNotification('success', 'Risco Criado', 'Novo risco adicionado!');
+                                    }
+                                    setShowRiskModal(false);
+                                    setEditingRisk(null);
+                                }}
+                                onClose={() => {
+                                    setShowRiskModal(false);
+                                    setEditingRisk(null);
+                                }}
+                            />
+                        )}
+                    </div>
+                );
+            };
+
+            // Modal de Risco
+            const RiskModal = ({ risk, projectId, onSave, onClose }) => {
+                const [formData, setFormData] = useState(risk || {
+                    title: '',
+                    description: '',
+                    category: 'technical',
+                    probability: 3,
+                    impact: 3,
+                    status: 'open',
+                    mitigation: '',
+                    owner: ''
+                });
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+                    onSave({
+                        ...formData,
+                        id: risk?.id || Date.now(),
+                        projectId: projectId,
+                        createdAt: risk?.createdAt || new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    });
+                };
+
+                return (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+                            <h3 className="text-xl font-bold mb-4">
+                                {risk ? 'Editar Risco' : 'Novo Risco'}
+                            </h3>
+                            <form onSubmit={handleSubmit}>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Título do Risco</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border rounded px-3 py-2"
+                                            required
+                                            value={formData.title}
+                                            onChange={(e) => setFormData({...formData, title: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Descrição</label>
+                                        <textarea
+                                            className="w-full border rounded px-3 py-2"
+                                            rows="3"
+                                            value={formData.description}
+                                            onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Categoria</label>
+                                            <select
+                                                className="w-full border rounded px-3 py-2"
+                                                value={formData.category}
+                                                onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                            >
+                                                <option value="technical">Técnico</option>
+                                                <option value="financial">Financeiro</option>
+                                                <option value="operational">Operacional</option>
+                                                <option value="external">Externo</option>
+                                                <option value="organizational">Organizacional</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Status</label>
+                                            <select
+                                                className="w-full border rounded px-3 py-2"
+                                                value={formData.status}
+                                                onChange={(e) => setFormData({...formData, status: e.target.value})}
+                                            >
+                                                <option value="open">Aberto</option>
+                                                <option value="mitigated">Mitigado</option>
+                                                <option value="closed">Fechado</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Probabilidade (1-5)</label>
+                                            <input
+                                                type="range"
+                                                min="1"
+                                                max="5"
+                                                className="w-full"
+                                                value={formData.probability}
+                                                onChange={(e) => setFormData({...formData, probability: parseInt(e.target.value)})}
+                                            />
+                                            <div className="text-center text-sm font-semibold">{formData.probability}</div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Impacto (1-5)</label>
+                                            <input
+                                                type="range"
+                                                min="1"
+                                                max="5"
+                                                className="w-full"
+                                                value={formData.impact}
+                                                onChange={(e) => setFormData({...formData, impact: parseInt(e.target.value)})}
+                                            />
+                                            <div className="text-center text-sm font-semibold">{formData.impact}</div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Plano de Mitigação</label>
+                                        <textarea
+                                            className="w-full border rounded px-3 py-2"
+                                            rows="3"
+                                            value={formData.mitigation}
+                                            onChange={(e) => setFormData({...formData, mitigation: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Responsável</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border rounded px-3 py-2"
+                                            value={formData.owner}
+                                            onChange={(e) => setFormData({...formData, owner: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-2 mt-6">
+                                    <button
+                                        type="button"
+                                        onClick={onClose}
+                                        className="px-4 py-2 border rounded hover:bg-gray-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                                    >
+                                        Salvar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Componente de Gestão de Stakeholders
+            const StakeholdersView = () => {
+                const [showStakeholderModal, setShowStakeholderModal] = useState(false);
+                const [editingStakeholder, setEditingStakeholder] = useState(null);
+                const [viewMode, setViewMode] = useState('list'); // 'list' ou 'matrix'
+
+                if (!activeProject) {
+                    return (
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <p className="text-gray-500 text-center">Selecione um projeto para gerenciar stakeholders</p>
+                        </div>
+                    );
+                }
+
+                const projectStakeholders = stakeholders.filter(s => s.projectId === activeProject.id);
+
+                const deleteStakeholder = (stakeholderId) => {
+                    if (confirm('Deseja realmente deletar este stakeholder?')) {
+                        setStakeholders(stakeholders.filter(s => s.id !== stakeholderId));
+                        addNotification('success', 'Stakeholder Deletado', 'Stakeholder removido com sucesso!');
+                    }
+                };
+
+                return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold">Gestão de Stakeholders - {activeProject.name}</h2>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setViewMode(viewMode === 'list' ? 'matrix' : 'list')}
+                                    className="px-3 py-2 border rounded text-sm hover:bg-gray-50"
+                                >
+                                    {viewMode === 'list' ? '📊 Matriz' : '📋 Lista'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setEditingStakeholder(null);
+                                        setShowStakeholderModal(true);
+                                    }}
+                                    className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+                                >
+                                    + Novo Stakeholder
+                                </button>
+                            </div>
+                        </div>
+
+                        {viewMode === 'list' ? (
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="text-left p-3">Nome</th>
+                                            <th className="text-left p-3">Cargo</th>
+                                            <th className="text-left p-3">Organização</th>
+                                            <th className="text-left p-3">Poder</th>
+                                            <th className="text-left p-3">Interesse</th>
+                                            <th className="text-left p-3">Estratégia</th>
+                                            <th className="text-left p-3">Contato</th>
+                                            <th className="text-left p-3">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {projectStakeholders.map(stakeholder => (
+                                            <tr key={stakeholder.id} className="border-b hover:bg-gray-50">
+                                                <td className="p-3 font-semibold">{stakeholder.name}</td>
+                                                <td className="p-3">{stakeholder.role}</td>
+                                                <td className="p-3">{stakeholder.organization}</td>
+                                                <td className="p-3">
+                                                    <span className={`text-xs px-2 py-1 rounded ${
+                                                        stakeholder.power >= 4 ? 'bg-red-100 text-red-800' :
+                                                        stakeholder.power >= 3 ? 'bg-yellow-100 text-yellow-800' :
+                                                        'bg-green-100 text-green-800'
+                                                    }`}>
+                                                        {stakeholder.power}/5
+                                                    </span>
+                                                </td>
+                                                <td className="p-3">
+                                                    <span className={`text-xs px-2 py-1 rounded ${
+                                                        stakeholder.interest >= 4 ? 'bg-blue-100 text-blue-800' :
+                                                        stakeholder.interest >= 3 ? 'bg-indigo-100 text-indigo-800' :
+                                                        'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                        {stakeholder.interest}/5
+                                                    </span>
+                                                </td>
+                                                <td className="p-3">
+                                                    <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded">
+                                                        {stakeholder.strategy}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3 text-sm">{stakeholder.contact}</td>
+                                                <td className="p-3">
+                                                    <div className="flex gap-1">
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingStakeholder(stakeholder);
+                                                                setShowStakeholderModal(true);
+                                                            }}
+                                                            className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteStakeholder(stakeholder.id)}
+                                                            className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                                                        >
+                                                            Deletar
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div>
+                                <h3 className="font-semibold mb-4">Matriz Poder x Interesse</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="border-2 border-orange-500 p-4 min-h-[200px] bg-orange-50">
+                                        <h4 className="font-semibold mb-2">Gerenciar de Perto</h4>
+                                        <p className="text-xs text-gray-600 mb-2">Alto Poder + Alto Interesse</p>
+                                        {projectStakeholders
+                                            .filter(s => s.power >= 4 && s.interest >= 4)
+                                            .map(s => (
+                                                <div key={s.id} className="bg-white p-2 mb-2 rounded text-sm">
+                                                    <strong>{s.name}</strong> - {s.role}
+                                                </div>
+                                            ))}
+                                    </div>
+                                    <div className="border-2 border-blue-500 p-4 min-h-[200px] bg-blue-50">
+                                        <h4 className="font-semibold mb-2">Manter Satisfeito</h4>
+                                        <p className="text-xs text-gray-600 mb-2">Alto Poder + Baixo Interesse</p>
+                                        {projectStakeholders
+                                            .filter(s => s.power >= 4 && s.interest < 4)
+                                            .map(s => (
+                                                <div key={s.id} className="bg-white p-2 mb-2 rounded text-sm">
+                                                    <strong>{s.name}</strong> - {s.role}
+                                                </div>
+                                            ))}
+                                    </div>
+                                    <div className="border-2 border-green-500 p-4 min-h-[200px] bg-green-50">
+                                        <h4 className="font-semibold mb-2">Manter Informado</h4>
+                                        <p className="text-xs text-gray-600 mb-2">Baixo Poder + Alto Interesse</p>
+                                        {projectStakeholders
+                                            .filter(s => s.power < 4 && s.interest >= 4)
+                                            .map(s => (
+                                                <div key={s.id} className="bg-white p-2 mb-2 rounded text-sm">
+                                                    <strong>{s.name}</strong> - {s.role}
+                                                </div>
+                                            ))}
+                                    </div>
+                                    <div className="border-2 border-gray-500 p-4 min-h-[200px] bg-gray-50">
+                                        <h4 className="font-semibold mb-2">Monitorar</h4>
+                                        <p className="text-xs text-gray-600 mb-2">Baixo Poder + Baixo Interesse</p>
+                                        {projectStakeholders
+                                            .filter(s => s.power < 4 && s.interest < 4)
+                                            .map(s => (
+                                                <div key={s.id} className="bg-white p-2 mb-2 rounded text-sm">
+                                                    <strong>{s.name}</strong> - {s.role}
+                                                </div>
+                                            ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {showStakeholderModal && (
+                            <StakeholderModal
+                                stakeholder={editingStakeholder}
+                                projectId={activeProject.id}
+                                onSave={(stakeholder) => {
+                                    if (editingStakeholder) {
+                                        setStakeholders(stakeholders.map(s => s.id === stakeholder.id ? stakeholder : s));
+                                        addNotification('success', 'Stakeholder Atualizado', 'Stakeholder editado com sucesso!');
+                                    } else {
+                                        setStakeholders([...stakeholders, stakeholder]);
+                                        addNotification('success', 'Stakeholder Criado', 'Novo stakeholder adicionado!');
+                                    }
+                                    setShowStakeholderModal(false);
+                                    setEditingStakeholder(null);
+                                }}
+                                onClose={() => {
+                                    setShowStakeholderModal(false);
+                                    setEditingStakeholder(null);
+                                }}
+                            />
+                        )}
+                    </div>
+                );
+            };
+
+            // Modal de Stakeholder
+            const StakeholderModal = ({ stakeholder, projectId, onSave, onClose }) => {
+                const [formData, setFormData] = useState(stakeholder || {
+                    name: '',
+                    role: '',
+                    organization: '',
+                    power: 3,
+                    interest: 3,
+                    strategy: 'manage',
+                    contact: '',
+                    expectations: '',
+                    influence: ''
+                });
+
+                const handleSubmit = (e) => {
+                    e.preventDefault();
+
+                    // Auto-determinar estratégia baseada em poder e interesse
+                    let strategy = 'monitor';
+                    if (formData.power >= 4 && formData.interest >= 4) strategy = 'manage';
+                    else if (formData.power >= 4 && formData.interest < 4) strategy = 'satisfy';
+                    else if (formData.power < 4 && formData.interest >= 4) strategy = 'inform';
+
+                    onSave({
+                        ...formData,
+                        strategy,
+                        id: stakeholder?.id || Date.now(),
+                        projectId: projectId,
+                        createdAt: stakeholder?.createdAt || new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    });
+                };
+
+                return (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                            <h3 className="text-xl font-bold mb-4">
+                                {stakeholder ? 'Editar Stakeholder' : 'Novo Stakeholder'}
+                            </h3>
+                            <form onSubmit={handleSubmit}>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Nome Completo</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border rounded px-3 py-2"
+                                            required
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Cargo</label>
+                                            <input
+                                                type="text"
+                                                className="w-full border rounded px-3 py-2"
+                                                required
+                                                value={formData.role}
+                                                onChange={(e) => setFormData({...formData, role: e.target.value})}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Organização</label>
+                                            <input
+                                                type="text"
+                                                className="w-full border rounded px-3 py-2"
+                                                value={formData.organization}
+                                                onChange={(e) => setFormData({...formData, organization: e.target.value})}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Poder/Influência (1-5)</label>
+                                            <input
+                                                type="range"
+                                                min="1"
+                                                max="5"
+                                                className="w-full"
+                                                value={formData.power}
+                                                onChange={(e) => setFormData({...formData, power: parseInt(e.target.value)})}
+                                            />
+                                            <div className="text-center text-sm font-semibold">{formData.power}</div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Interesse (1-5)</label>
+                                            <input
+                                                type="range"
+                                                min="1"
+                                                max="5"
+                                                className="w-full"
+                                                value={formData.interest}
+                                                onChange={(e) => setFormData({...formData, interest: parseInt(e.target.value)})}
+                                            />
+                                            <div className="text-center text-sm font-semibold">{formData.interest}</div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Contato (Email/Telefone)</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border rounded px-3 py-2"
+                                            value={formData.contact}
+                                            onChange={(e) => setFormData({...formData, contact: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Expectativas</label>
+                                        <textarea
+                                            className="w-full border rounded px-3 py-2"
+                                            rows="2"
+                                            value={formData.expectations}
+                                            onChange={(e) => setFormData({...formData, expectations: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Forma de Influência</label>
+                                        <textarea
+                                            className="w-full border rounded px-3 py-2"
+                                            rows="2"
+                                            value={formData.influence}
+                                            onChange={(e) => setFormData({...formData, influence: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-2 mt-6">
+                                    <button
+                                        type="button"
+                                        onClick={onClose}
+                                        className="px-4 py-2 border rounded hover:bg-gray-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+                                    >
+                                        Salvar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Componente de Relatórios
+            const ReportsView = () => {
+                const [reportType, setReportType] = useState('executive');
+
+                if (!activeProject) {
+                    return (
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <p className="text-gray-500 text-center">Selecione um projeto para gerar relatórios</p>
+                        </div>
+                    );
+                }
+
+                const projectTasks = tasks.filter(t => t.projectId === activeProject.id);
+                const projectRisks = risks.filter(r => r.projectId === activeProject.id);
+                const projectStakeholders = stakeholders.filter(s => s.projectId === activeProject.id);
+
+                const completedTasks = projectTasks.filter(t => t.status === 'done').length;
+                const totalTasks = projectTasks.length;
+                const progress = totalTasks > 0 ? ((completedTasks / totalTasks) * 100).toFixed(1) : 0;
+
+                const openRisks = projectRisks.filter(r => r.status === 'open').length;
+                const criticalRisks = projectRisks.filter(r => r.probability * r.impact >= 15).length;
+
+                return (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold">Relatórios - {activeProject.name}</h2>
+                            <div className="flex gap-2">
+                                <select
+                                    value={reportType}
+                                    onChange={(e) => setReportType(e.target.value)}
+                                    className="border rounded px-3 py-2 text-sm"
+                                >
+                                    <option value="executive">Executivo</option>
+                                    <option value="detailed">Detalhado</option>
+                                    <option value="risks">Riscos</option>
+                                    <option value="stakeholders">Stakeholders</option>
+                                </select>
+                                <button
+                                    onClick={exportToPDF}
+                                    className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                                >
+                                    Exportar PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        {reportType === 'executive' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-lg font-semibold mb-3">Resumo Executivo</h3>
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div className="border rounded p-4">
+                                            <p className="text-sm text-gray-600">Status do Projeto</p>
+                                            <p className="text-2xl font-bold capitalize">{activeProject.status}</p>
+                                        </div>
+                                        <div className="border rounded p-4">
+                                            <p className="text-sm text-gray-600">Progresso Geral</p>
+                                            <p className="text-2xl font-bold">{progress}%</p>
+                                            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                                <div
+                                                    className="bg-blue-600 h-2 rounded-full"
+                                                    style={{ width: `${progress}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                        <div className="border rounded p-4">
+                                            <p className="text-sm text-gray-600">Riscos Abertos</p>
+                                            <p className="text-2xl font-bold text-red-600">{openRisks}</p>
+                                            <p className="text-xs text-gray-500">({criticalRisks} críticos)</p>
+                                        </div>
+                                        <div className="border rounded p-4">
+                                            <p className="text-sm text-gray-600">Stakeholders</p>
+                                            <p className="text-2xl font-bold">{projectStakeholders.length}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="font-semibold mb-2">Informações do Projeto</h4>
+                                    <div className="space-y-2 text-sm">
+                                        <p><strong>Nome:</strong> {activeProject.name}</p>
+                                        <p><strong>Descrição:</strong> {activeProject.description}</p>
+                                        <p><strong>Início:</strong> {activeProject.startDate ? new Date(activeProject.startDate).toLocaleDateString('pt-BR') : 'N/A'}</p>
+                                        <p><strong>Término:</strong> {activeProject.endDate ? new Date(activeProject.endDate).toLocaleDateString('pt-BR') : 'N/A'}</p>
+                                        <p><strong>Orçamento:</strong> {activeProject.budget || 'N/A'}</p>
+                                        <p><strong>Gerente:</strong> {activeProject.manager || 'N/A'}</p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="font-semibold mb-2">Principais Métricas</h4>
+                                    <div className="space-y-2 text-sm">
+                                        <p><strong>Total de Tarefas:</strong> {totalTasks}</p>
+                                        <p><strong>Tarefas Concluídas:</strong> {completedTasks}</p>
+                                        <p><strong>Tarefas Pendentes:</strong> {projectTasks.filter(t => t.status === 'todo').length}</p>
+                                        <p><strong>Tarefas em Progresso:</strong> {projectTasks.filter(t => t.status === 'in_progress').length}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {reportType === 'detailed' && (
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-lg font-semibold mb-3">Relatório Detalhado</h3>
+
+                                    <div className="mb-6">
+                                        <h4 className="font-semibold mb-2">Lista de Tarefas</h4>
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="text-left p-2">Tarefa</th>
+                                                    <th className="text-left p-2">Status</th>
+                                                    <th className="text-left p-2">Prioridade</th>
+                                                    <th className="text-left p-2">Responsável</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {projectTasks.map(task => (
+                                                    <tr key={task.id} className="border-b">
+                                                        <td className="p-2">{task.title}</td>
+                                                        <td className="p-2">{task.status}</td>
+                                                        <td className="p-2">{task.priority}</td>
+                                                        <td className="p-2">{task.assignedTo || '-'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {reportType === 'risks' && (
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-semibold mb-3">Relatório de Riscos</h3>
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="text-left p-2">Risco</th>
+                                            <th className="text-left p-2">Categoria</th>
+                                            <th className="text-left p-2">Prob.</th>
+                                            <th className="text-left p-2">Impacto</th>
+                                            <th className="text-left p-2">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {projectRisks.map(risk => (
+                                            <tr key={risk.id} className="border-b">
+                                                <td className="p-2">{risk.title}</td>
+                                                <td className="p-2">{risk.category}</td>
+                                                <td className="p-2">{risk.probability}/5</td>
+                                                <td className="p-2">{risk.impact}/5</td>
+                                                <td className="p-2">{risk.status}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {reportType === 'stakeholders' && (
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-semibold mb-3">Relatório de Stakeholders</h3>
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="text-left p-2">Nome</th>
+                                            <th className="text-left p-2">Cargo</th>
+                                            <th className="text-left p-2">Poder</th>
+                                            <th className="text-left p-2">Interesse</th>
+                                            <th className="text-left p-2">Estratégia</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {projectStakeholders.map(stakeholder => (
+                                            <tr key={stakeholder.id} className="border-b">
+                                                <td className="p-2">{stakeholder.name}</td>
+                                                <td className="p-2">{stakeholder.role}</td>
+                                                <td className="p-2">{stakeholder.power}/5</td>
+                                                <td className="p-2">{stakeholder.interest}/5</td>
+                                                <td className="p-2">{stakeholder.strategy}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
             // Modal de Projeto
             const ProjectModal = ({ project, onSave, onClose }) => {
                 const [formData, setFormData] = useState(project || {
@@ -894,6 +2177,15 @@
                     { id: 'tasks', name: 'Tarefas', icon: 'check-square' },
                     { id: 'risks', name: 'Riscos', icon: 'alert-triangle' },
                     { id: 'stakeholders', name: 'Stakeholders', icon: 'users' },
+                    { id: 'wbs', name: 'WBS', icon: 'network' },
+                    { id: 'changes', name: 'Mudanças', icon: 'git-pull-request' },
+                    { id: 'lessons', name: 'Lições', icon: 'book-open' },
+                    { id: 'deliverables', name: 'Entregas', icon: 'package' },
+                    { id: 'quality', name: 'Qualidade', icon: 'award' },
+                    { id: 'communications', name: 'Comunicações', icon: 'message-square' },
+                    { id: 'resources', name: 'Recursos', icon: 'briefcase' },
+                    { id: 'costs', name: 'Custos', icon: 'dollar-sign' },
+                    { id: 'issues', name: 'Issues', icon: 'alert-circle' },
                     { id: 'reports', name: 'Relatórios', icon: 'file-text' },
                     { id: 'settings', name: t('settings'), icon: 'settings' }
                 ];
@@ -1049,13 +2341,10 @@
                                         </div>
                                     </div>
                                 )}
-                                {activeView === 'tasks' && (
-                                    <div className="bg-white rounded-lg shadow p-6">
-                                        <h2 className="text-2xl font-bold mb-4">Tarefas</h2>
-                                        {/* Implementar lista de tarefas */}
-                                        <p className="text-gray-500">Sistema de tarefas em desenvolvimento...</p>
-                                    </div>
-                                )}
+                                {activeView === 'tasks' && <TasksView />}
+                                {activeView === 'risks' && <RisksView />}
+                                {activeView === 'stakeholders' && <StakeholdersView />}
+                                {activeView === 'reports' && <ReportsView />}
                             </div>
                         </div>
 
