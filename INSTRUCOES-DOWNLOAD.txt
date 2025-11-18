@@ -1,0 +1,106 @@
+═══════════════════════════════════════════════════════════
+  COMO BAIXAR E USAR O PMBOK MANAGER PRO - PASSO A PASSO
+═══════════════════════════════════════════════════════════
+
+PROBLEMA: Quando clico no link, aparece o código ao invés da página
+
+SOLUÇÃO:
+--------
+
+OPÇÃO A - Salvar Página (RECOMENDADO):
+=======================================
+1. Abra este link no navegador:
+   https://github.com/gustavohenrique55/Project-Management-7-PRO/raw/claude/continue-system-development-011CUwQiD6FWik8CnQ5U2HdL/index.html
+
+2. Quando aparecer o código, pressione: Ctrl + S
+
+3. Na janela de salvar:
+   - Nome: pmbok-manager.html
+   - Tipo: "Página da Web, HTML" ou "HTML"
+   - Salvar
+
+4. Vá até a pasta onde salvou
+
+5. Clique DUAS VEZES no arquivo pmbok-manager.html
+
+6. PRONTO! O sistema abre!
+
+
+OPÇÃO B - Copiar e Colar o Código:
+===================================
+1. Abra o link acima
+
+2. Pressione Ctrl + A (selecionar tudo)
+
+3. Pressione Ctrl + C (copiar)
+
+4. Abra o Bloco de Notas (Notepad) ou qualquer editor de texto
+
+5. Pressione Ctrl + V (colar)
+
+6. Clique em "Arquivo" > "Salvar como"
+
+7. Configure:
+   - Nome: pmbok-manager.html
+   - Tipo: "Todos os arquivos (*.*)"
+   - Codificação: UTF-8
+   - Salvar
+
+8. Feche o Bloco de Notas
+
+9. Vá até a pasta onde salvou
+
+10. Clique DUAS VEZES no arquivo pmbok-manager.html
+
+
+OPÇÃO C - GitHub Desktop (SE TIVER GIT):
+=========================================
+1. Vá para: https://github.com/gustavohenrique55/Project-Management-7-PRO
+
+2. Clique no botão verde "Code"
+
+3. Clique em "Download ZIP"
+
+4. Extraia o ZIP
+
+5. Abra a pasta extraída
+
+6. Procure o arquivo index.html
+
+7. Clique DUAS VEZES nele
+
+
+VERIFICAÇÃO:
+============
+Após abrir o arquivo, você deve ver:
+✓ Tela com gradiente azul/roxo
+✓ Título "PMBOK 7 Manager Pro"
+✓ Campos de login
+✓ Botão "Entrar no Modo Demo"
+
+SE APARECER CÓDIGO:
+✓ Você não salvou corretamente
+✓ Tente a OPÇÃO B (Copiar e Colar)
+
+
+PRIMEIRO USO:
+=============
+1. Clique em "Entrar no Modo Demo"
+2. Você verá um MENU LATERAL com 16 itens
+3. Explore todos os módulos!
+
+
+PROBLEMAS?
+==========
+- Aparece código ao invés da página?
+  → Use OPÇÃO B (copiar e colar no Bloco de Notas)
+
+- Página em branco?
+  → Aguarde 20 segundos (primeiro carregamento)
+  → Verifique conexão com internet
+
+- Menu com menos de 16 itens?
+  → Arquivo incompleto, baixe novamente
+
+
+═══════════════════════════════════════════════════════════
