@@ -1,0 +1,34 @@
+========================================
+COMO ABRIR O PMBOK MANAGER PRO
+========================================
+
+OPÇÃO 1 - COM SERVIDOR (RECOMENDADO):
+--------------------------------------
+1. Abra o navegador (Chrome, Firefox, Edge)
+2. Digite: http://localhost:8080/index.html
+3. Pressione ENTER
+
+OPÇÃO 2 - SEM SERVIDOR:
+------------------------
+1. Vá até a pasta: /home/user/pmbok-system/
+2. Clique com botão DIREITO em "index.html"
+3. Escolha "Abrir com" > Seu Navegador
+4. OU arraste o arquivo para a janela do navegador
+
+OPÇÃO 3 - CAMINHO DIRETO:
+--------------------------
+Cole isto na barra de endereço do navegador:
+file:///home/user/pmbok-system/index.html
+
+PRIMEIRO USO:
+-------------
+1. Na tela de login, clique em "Entrar no Modo Demo"
+2. Pronto! Você já pode usar o sistema
+
+PROBLEMAS?
+----------
+- Verifique se tem conexão com internet (CDNs)
+- Pressione F12 e veja erros no Console
+- Tente limpar o cache (Ctrl + Shift + Delete)
+
+========================================
