@@ -72,6 +72,207 @@
             const [resources, setResources] = useState([]);
             const [tasks, setTasks] = useState([]);
 
+            // Estados para IA
+            const [aiChatOpen, setAiChatOpen] = useState(false);
+            const [aiMessages, setAiMessages] = useState([]);
+            const [aiLoading, setAiLoading] = useState(false);
+            const [geminiApiKey, setGeminiApiKey] = useState('AIzaSyCliG1LLOlp1nZyu3eMxhZJenH1H7BN70k');
+
+            // Função para chamar API do Google Gemini
+            const callGeminiAPI = async (prompt, context = '') => {
+                if (!geminiApiKey) {
+                    addNotification('error', 'Erro', 'API Key do Gemini não configurada');
+                    return null;
+                }
+
+                try {
+                    setAiLoading(true);
+                    const fullPrompt = context ? `${context}\n\n${prompt}` : prompt;
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{
+                                    text: fullPrompt
+                                }]
+                            }]
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Erro na requisição à API');
+                    }
+
+                    const data = await response.json();
+                    const aiResponse = data.candidates[0]?.content?.parts[0]?.text || 'Desculpe, não consegui gerar uma resposta.';
+
+                    setAiLoading(false);
+                    return aiResponse;
+                } catch (error) {
+                    console.error('Erro ao chamar Gemini API:', error);
+                    addNotification('error', 'Erro de IA', 'Não foi possível conectar com a IA');
+                    setAiLoading(false);
+                    return null;
+                }
+            };
+
+            // Funções específicas de IA para cada módulo
+            const aiGenerateProjectDescription = async (projectName, projectType) => {
+                const prompt = `Você é um especialista em gestão de projetos PMBOK 7.
+
+Gere uma descrição profissional e detalhada para um projeto chamado "${projectName}" do tipo "${projectType}".
+
+A descrição deve incluir:
+- Objetivo principal
+- Escopo resumido
+- Benefícios esperados
+- Público-alvo
+
+Limite a 200 palavras. Seja profissional e direto.`;
+
+                return await callGeminiAPI(prompt);
+            };
+
+            const aiGenerateTasks = async (projectName, projectDescription) => {
+                const prompt = `Você é um especialista em gestão de projetos PMBOK 7.
+
+Com base neste projeto:
+Nome: ${projectName}
+Descrição: ${projectDescription}
+
+Gere uma lista de 8-10 tarefas principais necessárias para o projeto.
+
+Para cada tarefa, forneça no formato:
+- Título da tarefa
+- Descrição breve
+- Prioridade sugerida (Alta/Média/Baixa)
+- Duração estimada em dias
+
+Formato de resposta:
+TAREFA 1: [título]
+Descrição: [descrição]
+Prioridade: [prioridade]
+Duração: [X dias]
+
+(repita para todas as tarefas)`;
+
+                return await callGeminiAPI(prompt);
+            };
+
+            const aiIdentifyRisks = async (projectName, projectDescription) => {
+                const prompt = `Você é um especialista em gestão de riscos e PMBOK 7.
+
+Analise este projeto:
+Nome: ${projectName}
+Descrição: ${projectDescription}
+
+Identifique os 6-8 principais riscos potenciais.
+
+Para cada risco, forneça:
+- Descrição do risco
+- Categoria (Técnico/Financeiro/Operacional/Externo)
+- Probabilidade (1-5)
+- Impacto (1-5)
+- Plano de mitigação sugerido
+
+Formato:
+RISCO 1: [descrição]
+Categoria: [categoria]
+Probabilidade: [1-5]
+Impacto: [1-5]
+Mitigação: [plano]
+
+(repita para todos)`;
+
+                return await callGeminiAPI(prompt);
+            };
+
+            const aiAnalyzeStakeholders = async (projectName, projectDescription) => {
+                const prompt = `Você é um especialista em gestão de stakeholders e PMBOK 7.
+
+Para este projeto:
+Nome: ${projectName}
+Descrição: ${projectDescription}
+
+Identifique 6-8 stakeholders principais que devem ser considerados.
+
+Para cada stakeholder, forneça:
+- Nome/Cargo
+- Organização/Área
+- Nível de Poder (1-5)
+- Nível de Interesse (1-5)
+- Expectativas principais
+- Estratégia de engajamento recomendada
+
+Formato:
+STAKEHOLDER 1: [nome/cargo]
+Organização: [organização]
+Poder: [1-5]
+Interesse: [1-5]
+Expectativas: [texto]
+Estratégia: [texto]
+
+(repita para todos)`;
+
+                return await callGeminiAPI(prompt);
+            };
+
+            const aiGenerateWBS = async (projectName, projectDescription) => {
+                const prompt = `Você é um especialista em WBS (Work Breakdown Structure) e PMBOK 7.
+
+Para o projeto:
+Nome: ${projectName}
+Descrição: ${projectDescription}
+
+Crie uma estrutura analítica de trabalho (WBS) hierárquica com 3 níveis:
+- Nível 1: Fases principais (4-6 fases)
+- Nível 2: Entregas principais por fase (2-4 por fase)
+- Nível 3: Pacotes de trabalho (2-3 por entrega)
+
+Use numeração hierárquica (1.0, 1.1, 1.1.1, etc.)
+
+Formato:
+1.0 [Fase 1]
+  1.1 [Entrega 1.1]
+    1.1.1 [Pacote de trabalho]
+    1.1.2 [Pacote de trabalho]
+  1.2 [Entrega 1.2]
+    1.2.1 [Pacote de trabalho]
+
+Continue para todas as fases.`;
+
+                return await callGeminiAPI(prompt);
+            };
+
+            const aiGenerateExecutiveReport = async (projectData) => {
+                const prompt = `Você é um especialista em relatórios executivos e PMBOK 7.
+
+Gere um relatório executivo profissional baseado nestes dados:
+
+Projeto: ${projectData.name}
+Status: ${projectData.status}
+Progresso: ${projectData.progress || 0}%
+Tarefas: ${projectData.totalTasks} total, ${projectData.completedTasks} concluídas
+Riscos: ${projectData.totalRisks} identificados, ${projectData.openRisks} abertos
+Stakeholders: ${projectData.totalStakeholders}
+
+O relatório deve incluir:
+1. Resumo Executivo (3-4 parágrafos)
+2. Status Geral do Projeto
+3. Principais Conquistas
+4. Desafios e Riscos
+5. Próximos Passos
+6. Recomendações
+
+Seja profissional, conciso e use linguagem executiva.`;
+
+                return await callGeminiAPI(prompt);
+            };
+
             // Traduções
             const translations = {
                 pt: {
@@ -2520,6 +2721,157 @@
                 );
             };
 
+            // Componente de Chat Assistente com IA
+            const AIChatAssistant = () => {
+                const [input, setInput] = useState('');
+                const messagesEndRef = useRef(null);
+
+                const scrollToBottom = () => {
+                    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                };
+
+                useEffect(() => {
+                    scrollToBottom();
+                }, [aiMessages]);
+
+                const handleSendMessage = async () => {
+                    if (!input.trim() || aiLoading) return;
+
+                    const userMessage = input.trim();
+                    setInput('');
+
+                    // Adiciona mensagem do usuário
+                    const newMessages = [...aiMessages, { role: 'user', content: userMessage }];
+                    setAiMessages(newMessages);
+
+                    // Contexto do projeto atual
+                    let context = '';
+                    if (activeProject) {
+                        context = `Contexto: O usuário está trabalhando no projeto "${activeProject.name}". `;
+                        if (activeProject.description) context += `Descrição: ${activeProject.description}. `;
+                    }
+
+                    // Chama a API
+                    const aiResponse = await callGeminiAPI(
+                        `Você é um assistente especializado em gestão de projetos e PMBOK 7. Responda de forma profissional, clara e objetiva.\n\nPergunta do usuário: ${userMessage}`,
+                        context
+                    );
+
+                    if (aiResponse) {
+                        setAiMessages([...newMessages, { role: 'assistant', content: aiResponse }]);
+                    }
+                };
+
+                return (
+                    <>
+                        {/* Botão Flutuante */}
+                        {!aiChatOpen && (
+                            <button
+                                onClick={() => setAiChatOpen(true)}
+                                className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center z-50"
+                                title="Assistente IA"
+                            >
+                                <span className="text-2xl">🤖</span>
+                            </button>
+                        )}
+
+                        {/* Janela de Chat */}
+                        {aiChatOpen && (
+                            <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-lg shadow-2xl z-50 flex flex-col">
+                                {/* Header */}
+                                <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-t-lg flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-2xl">🤖</span>
+                                        <div>
+                                            <h3 className="font-bold">Assistente IA PMBOK</h3>
+                                            <p className="text-xs opacity-90">Powered by Google Gemini</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setAiChatOpen(false)}
+                                        className="text-white hover:bg-white/20 rounded p-1"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                {/* Messages */}
+                                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+                                    {aiMessages.length === 0 ? (
+                                        <div className="text-center text-gray-500 mt-8">
+                                            <p className="text-4xl mb-4">👋</p>
+                                            <p className="font-semibold">Olá! Sou seu assistente de IA.</p>
+                                            <p className="text-sm mt-2">Pergunte sobre:</p>
+                                            <div className="mt-3 text-xs space-y-1">
+                                                <p>• Gestão de projetos PMBOK 7</p>
+                                                <p>• Análise de riscos</p>
+                                                <p>• Sugestões de tarefas</p>
+                                                <p>• Melhores práticas</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        aiMessages.map((msg, index) => (
+                                            <div
+                                                key={index}
+                                                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                            >
+                                                <div
+                                                    className={`max-w-[80%] rounded-lg p-3 ${
+                                                        msg.role === 'user'
+                                                            ? 'bg-blue-500 text-white'
+                                                            : 'bg-white border border-gray-200'
+                                                    }`}
+                                                >
+                                                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                    {aiLoading && (
+                                        <div className="flex justify-start">
+                                            <div className="bg-white border border-gray-200 rounded-lg p-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                                                    <span className="text-sm text-gray-600">Pensando...</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div ref={messagesEndRef} />
+                                </div>
+
+                                {/* Input */}
+                                <div className="p-4 border-t">
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={input}
+                                            onChange={(e) => setInput(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                                            placeholder="Digite sua pergunta..."
+                                            className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            disabled={aiLoading}
+                                        />
+                                        <button
+                                            onClick={handleSendMessage}
+                                            disabled={aiLoading || !input.trim()}
+                                            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            ➤
+                                        </button>
+                                    </div>
+                                    {activeProject && (
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            📂 Projeto ativo: {activeProject.name}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </>
+                );
+            };
+
             // Modal de Projeto
             const ProjectModal = ({ project, onSave, onClose }) => {
                 const [formData, setFormData] = useState(project || {
@@ -2922,6 +3274,9 @@
                                 }}
                             />
                         )}
+
+                        {/* Assistente de IA */}
+                        <AIChatAssistant />
                     </div>
                 );
             };
