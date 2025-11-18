@@ -78,6 +78,200 @@
             const [aiLoading, setAiLoading] = useState(false);
             const [geminiApiKey, setGeminiApiKey] = useState('AIzaSyCliG1LLOlp1nZyu3eMxhZJenH1H7BN70k');
 
+            // Base de Conhecimento do Manual do Usuário
+            const userManualKnowledge = {
+                'dashboard': {
+                    keywords: ['dashboard', 'visão geral', 'kpi', 'gráficos', 'overview'],
+                    content: `DASHBOARD: Mostra visão geral do projeto com KPIs:
+                    - Total de tarefas, riscos, stakeholders
+                    - Gráficos de status de tarefas, distribuição de riscos, orçamento
+                    - Acesso rápido a todos os módulos`
+                },
+                'projetos': {
+                    keywords: ['projeto', 'criar projeto', 'novo projeto', 'editar projeto'],
+                    content: `GESTÃO DE PROJETOS:
+                    - Criar: Clicar no botão "+" no topo, preencher nome, descrição, datas, orçamento
+                    - Campos: Nome, Descrição, Data Início, Data Fim, Orçamento, Status, Gerente
+                    - Status: Planejamento, Em andamento, Concluído, Cancelado
+                    - Use a IA para gerar descrição automática do projeto`
+                },
+                'tarefas': {
+                    keywords: ['tarefa', 'task', 'kanban', 'board', 'arrastar', 'drag'],
+                    content: `GESTÃO DE TAREFAS (KANBAN):
+                    - Colunas: A Fazer, Em Progresso, Em Revisão, Concluído
+                    - Criar: Clicar em "+" na coluna desejada
+                    - Campos: Título, Descrição, Responsável, Prioridade, Data
+                    - Arrastar e soltar entre colunas para mudar status
+                    - Use IA para gerar lista de tarefas sugeridas`
+                },
+                'riscos': {
+                    keywords: ['risco', 'risk', 'matriz', 'probabilidade', 'impacto', 'ameaça', 'oportunidade'],
+                    content: `GESTÃO DE RISCOS:
+                    - Matriz 5x5 (Probabilidade x Impacto)
+                    - Tipos: Ameaça ou Oportunidade
+                    - Probabilidade: 1-5 (Muito Baixa a Muito Alta)
+                    - Impacto: 1-5 (Muito Baixo a Muito Alto)
+                    - Severidade: Calculada automaticamente (P x I)
+                    - Níveis: Baixo (1-5), Médio (6-12), Alto (13-18), Crítico (19-25)
+                    - Campos: Título, Descrição, Categoria, Plano de Mitigação
+                    - Use IA para identificar riscos automaticamente`
+                },
+                'stakeholders': {
+                    keywords: ['stakeholder', 'parte interessada', 'poder', 'interesse', 'matriz stakeholder'],
+                    content: `GESTÃO DE STAKEHOLDERS:
+                    - Matriz 2x2 (Poder x Interesse)
+                    - Poder: 1-5 (influência sobre o projeto)
+                    - Interesse: 1-5 (nível de interesse no projeto)
+                    - Estratégias automáticas:
+                      * Monitorar (Baixo Poder + Baixo Interesse)
+                      * Manter Informado (Baixo Poder + Alto Interesse)
+                      * Manter Satisfeito (Alto Poder + Baixo Interesse)
+                      * Gerenciar de Perto (Alto Poder + Alto Interesse)
+                    - Campos: Nome, Cargo, Email, Telefone, Expectativas
+                    - Use IA para análise de stakeholders`
+                },
+                'wbs': {
+                    keywords: ['wbs', 'estrutura analítica', 'decomposição', 'work breakdown'],
+                    content: `WBS (WORK BREAKDOWN STRUCTURE):
+                    - Decomposição hierárquica do trabalho
+                    - Níveis: Projeto > Fase > Pacote de Trabalho > Atividade
+                    - Campos: Nome, Descrição, Nível, Responsável, Status
+                    - Use IA para gerar WBS completa automaticamente`
+                },
+                'mudancas': {
+                    keywords: ['mudança', 'change', 'solicitação', 'aprovação'],
+                    content: `GESTÃO DE MUDANÇAS:
+                    - Workflow: Pendente > Aprovada/Rejeitada > Implementada
+                    - Campos: Título, Descrição, Solicitante, Justificativa, Impacto, Custo
+                    - Rastreamento completo de solicitações
+                    - Aprovação/Rejeição com comentários`
+                },
+                'licoes': {
+                    keywords: ['lição', 'lições aprendidas', 'aprendizado', 'lessons learned'],
+                    content: `LIÇÕES APRENDIDAS:
+                    - Tipos: Positivo ou Negativo
+                    - Categorias: Técnico, Gestão, Comunicação, Riscos, Qualidade, Recursos
+                    - Campos: Título, Descrição, Categoria, Recomendação, Fase
+                    - Base de conhecimento para projetos futuros`
+                },
+                'entregas': {
+                    keywords: ['entrega', 'deliverable', 'produto', 'resultado'],
+                    content: `GESTÃO DE ENTREGAS (DELIVERABLES):
+                    - Status: Planejado, Em desenvolvimento, Em revisão, Entregue
+                    - Campos: Nome, Descrição, Responsável, Data Prevista, Data Real
+                    - Acompanhamento de produtos e resultados do projeto`
+                },
+                'qualidade': {
+                    keywords: ['qualidade', 'quality', 'métrica', 'padrão', 'indicador'],
+                    content: `MÉTRICAS DE QUALIDADE:
+                    - Tipos de métricas personalizadas
+                    - Campos: Nome, Descrição, Meta, Valor Atual, Unidade, Frequência
+                    - Acompanhamento de KPIs de qualidade
+                    - Comparação Meta vs Real`
+                },
+                'comunicacoes': {
+                    keywords: ['comunicação', 'communication', 'plano', 'stakeholder comunicação'],
+                    content: `PLANO DE COMUNICAÇÕES:
+                    - Matriz de comunicação do projeto
+                    - Campos: Tipo, Descrição, Público-alvo, Frequência, Responsável, Canal
+                    - Frequências: Diária, Semanal, Quinzenal, Mensal, Trimestral, Conforme necessário
+                    - Canais: Email, Reunião, Relatório, Dashboard, Apresentação`
+                },
+                'recursos': {
+                    keywords: ['recurso', 'resource', 'equipe', 'material', 'alocação'],
+                    content: `GESTÃO DE RECURSOS:
+                    - Tipos: Humano ou Material
+                    - Campos: Nome, Tipo, Quantidade, Custo/Hora ou Custo/Unidade, Disponibilidade
+                    - Alocação de pessoas e materiais ao projeto
+                    - Controle de custos e disponibilidade`
+                },
+                'custos': {
+                    keywords: ['custo', 'cost', 'evm', 'valor agregado', 'orçamento', 'budget', 'cpi', 'spi'],
+                    content: `GESTÃO DE CUSTOS & EVM (EARNED VALUE MANAGEMENT):
+                    - Campos: Categoria, Descrição, Valor Planejado (PV), Valor Agregado (EV), Custo Real (AC)
+                    - Indicadores calculados automaticamente:
+                      * CV (Cost Variance) = EV - AC
+                      * SV (Schedule Variance) = EV - PV
+                      * CPI (Cost Performance Index) = EV / AC (>1 = bom)
+                      * SPI (Schedule Performance Index) = EV / PV (>1 = bom)
+                    - Dashboard de análise de valor agregado
+                    - Categorias: Recursos Humanos, Materiais, Equipamentos, Serviços, Outros`
+                },
+                'issues': {
+                    keywords: ['issue', 'problema', 'impedimento', 'bloqueio'],
+                    content: `GESTÃO DE ISSUES (PROBLEMAS):
+                    - Status: Aberto, Em andamento, Resolvido, Fechado
+                    - Prioridade: Baixa, Média, Alta, Crítica
+                    - Campos: Título, Descrição, Responsável, Data Identificação, Data Resolução
+                    - Rastreamento de impedimentos e bloqueios`
+                },
+                'relatorios': {
+                    keywords: ['relatório', 'report', 'pdf', 'exportar', 'executivo'],
+                    content: `SISTEMA DE RELATÓRIOS:
+                    - Tipos: Executivo, Detalhado, Riscos, Stakeholders
+                    - Formatos: Visualizar ou Exportar PDF
+                    - Relatório Executivo: Resumo geral do projeto
+                    - Relatório Detalhado: Informações completas de todos os módulos
+                    - Relatório de Riscos: Análise detalhada da matriz de riscos
+                    - Relatório de Stakeholders: Análise da matriz de stakeholders`
+                },
+                'ia': {
+                    keywords: ['ia', 'ai', 'inteligência artificial', 'gemini', 'assistente', 'chatbot'],
+                    content: `ASSISTENTE DE IA (GOOGLE GEMINI):
+                    - Botão flutuante 🤖 no canto inferior direito
+                    - 6 Funções especializadas:
+                      1. Gerar Descrição de Projeto
+                      2. Sugerir Tarefas
+                      3. Identificar Riscos
+                      4. Analisar Stakeholders
+                      5. Gerar WBS
+                      6. Gerar Relatório Executivo
+                    - Chat livre para perguntas sobre gestão de projetos e PMBOK 7
+                    - Context-aware: conhece o projeto ativo`
+                },
+                'backup': {
+                    keywords: ['backup', 'restore', 'exportar', 'importar', 'salvar dados'],
+                    content: `BACKUP E RESTORE:
+                    - Exportar Dados: Ir em Configurações > Exportar Dados > Salvar arquivo JSON
+                    - Importar Dados: Ir em Configurações > Importar Dados > Selecionar arquivo JSON
+                    - Dados incluídos: Todos os projetos, tarefas, riscos, stakeholders, etc.
+                    - Importante: Fazer backup regularmente pois dados ficam no navegador`
+                },
+                'login': {
+                    keywords: ['login', 'entrar', 'cadastro', 'criar conta', 'modo demo'],
+                    content: `ACESSO AO SISTEMA:
+                    - Modo Demo: Acesso rápido sem cadastro (dados temporários)
+                    - Criar Conta: Email e senha (dados salvos localmente)
+                    - Login: Email e senha cadastrados
+                    - Dados armazenados no navegador (LocalStorage)`
+                }
+            };
+
+            // Função para buscar no manual do usuário
+            const searchUserManual = (userQuestion) => {
+                const questionLower = userQuestion.toLowerCase();
+                let relevantSections = [];
+
+                // Busca por palavras-chave em cada seção
+                Object.keys(userManualKnowledge).forEach(section => {
+                    const { keywords, content } = userManualKnowledge[section];
+
+                    // Verifica se alguma palavra-chave aparece na pergunta
+                    const hasMatch = keywords.some(keyword => questionLower.includes(keyword));
+
+                    if (hasMatch) {
+                        relevantSections.push(content);
+                    }
+                });
+
+                // Se encontrou seções relevantes, retorna como contexto
+                if (relevantSections.length > 0) {
+                    return `\n\nINFORMAÇÕES DO MANUAL DO SISTEMA:\n${relevantSections.join('\n\n')}\n\n`;
+                }
+
+                return '';
+            };
+
             // Função para chamar API do Google Gemini
             const callGeminiAPI = async (prompt, context = '') => {
                 if (!geminiApiKey) {
@@ -2751,6 +2945,13 @@ Seja profissional, conciso e use linguagem executiva.`;
                         if (activeProject.description) context += `Descrição: ${activeProject.description}. `;
                     }
 
+                    // Busca no manual do usuário
+                    const manualContext = searchUserManual(userMessage);
+                    if (manualContext) {
+                        context += manualContext;
+                        context += '\nUSE AS INFORMAÇÕES DO MANUAL ACIMA como base principal para responder. Se a pergunta for sobre como usar o sistema, responda APENAS com base no manual.\n';
+                    }
+
                     // Chama a API
                     const aiResponse = await callGeminiAPI(
                         `Você é um assistente especializado em gestão de projetos e PMBOK 7. Responda de forma profissional, clara e objetiva.\n\nPergunta do usuário: ${userMessage}`,
@@ -2801,12 +3002,14 @@ Seja profissional, conciso e use linguagem executiva.`;
                                         <div className="text-center text-gray-500 mt-8">
                                             <p className="text-4xl mb-4">👋</p>
                                             <p className="font-semibold">Olá! Sou seu assistente de IA.</p>
-                                            <p className="text-sm mt-2">Pergunte sobre:</p>
+                                            <p className="text-sm mt-2">💡 Agora com busca integrada no Manual do Usuário!</p>
                                             <div className="mt-3 text-xs space-y-1">
+                                                <p>• Como usar o sistema</p>
                                                 <p>• Gestão de projetos PMBOK 7</p>
                                                 <p>• Análise de riscos</p>
                                                 <p>• Sugestões de tarefas</p>
                                                 <p>• Melhores práticas</p>
+                                                <p className="text-blue-600 font-semibold mt-2">📚 Busca automática no manual!</p>
                                             </div>
                                         </div>
                                     ) : (
