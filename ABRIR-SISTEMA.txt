@@ -1,0 +1,110 @@
+═══════════════════════════════════════════════════════════════
+    🚀 COMO ABRIR O SISTEMA PMBOK MANAGER PRO v2.0
+═══════════════════════════════════════════════════════════════
+
+📍 LOCALIZAÇÃO DOS ARQUIVOS:
+   /home/user/pmbok-system/
+
+📄 ARQUIVO PRINCIPAL:
+   index.html
+
+═══════════════════════════════════════════════════════════════
+
+🎯 OPÇÃO 1: ABRIR DIRETO (MAIS FÁCIL)
+
+   1. Procure o arquivo: index.html
+   2. Clique DUAS VEZES nele
+   3. Pronto! O sistema abre no navegador
+
+═══════════════════════════════════════════════════════════════
+
+🎯 OPÇÃO 2: ARRASTAR PARA O NAVEGADOR
+
+   1. Abra o Chrome, Firefox ou Edge
+   2. Abra a pasta onde está o index.html
+   3. ARRASTE o arquivo index.html para o navegador
+   4. Solte e o sistema abre!
+
+═══════════════════════════════════════════════════════════════
+
+🎯 OPÇÃO 3: COPIAR CAMINHO COMPLETO
+
+   Copie e cole este caminho na barra de endereços do navegador:
+
+   file:///home/user/pmbok-system/index.html
+
+═══════════════════════════════════════════════════════════════
+
+📚 OUTROS ARQUIVOS IMPORTANTES:
+
+   📖 MANUAL-USUARIO-COMPLETO.md
+      Manual de 40.000 palavras
+      Use no NotebookLM: https://notebooklm.google.com
+
+   📖 GUIA-NOTEBOOKLM.md
+      Passo a passo para configurar NotebookLM
+
+   📖 COMO-USAR-IA-E-MANUAL.md
+      Guia rápido do chatbot e manual
+
+   📖 LINKS-DE-ACESSO.md
+      Instruções para acessar via GitHub
+
+═══════════════════════════════════════════════════════════════
+
+🤖 TESTANDO O CHATBOT:
+
+   Depois que o sistema abrir:
+
+   1. Faça login ou entre no "Modo Demo"
+   2. Procure o botão 🤖 no canto inferior direito
+   3. Clique nele para abrir o chat
+   4. Faça uma pergunta de teste:
+      "Como criar um novo projeto?"
+
+   O chatbot vai buscar no manual e responder!
+
+═══════════════════════════════════════════════════════════════
+
+❓ PROBLEMAS COMUNS:
+
+   "Não encontro o arquivo index.html"
+   → Procure na pasta: /home/user/pmbok-system/
+
+   "O arquivo não abre"
+   → Clique com botão DIREITO > Abrir com > Chrome/Firefox
+
+   "Aparece código ao invés do sistema"
+   → Você abriu em um editor de texto
+   → Feche e abra no NAVEGADOR (Chrome, Firefox, Edge)
+
+   "O chatbot não responde"
+   → Verifique se tem internet
+   → Verifique a API Key nas Configurações
+
+═══════════════════════════════════════════════════════════════
+
+✅ ESTÁ TUDO PRONTO!
+
+   Você não precisa:
+   ❌ Instalar nada
+   ❌ Configurar servidor
+   ❌ Acessar GitHub (opcional)
+   ❌ Fazer upload
+
+   Basta:
+   ✅ Abrir o index.html no navegador
+   ✅ Começar a usar!
+
+═══════════════════════════════════════════════════════════════
+
+📞 PRECISA DE AJUDA?
+
+   Use o próprio chatbot do sistema! Ele agora tem busca
+   integrada no manual e pode responder suas dúvidas.
+
+═══════════════════════════════════════════════════════════════
+
+                     🎉 BOM TRABALHO! 🎉
+
+═══════════════════════════════════════════════════════════════
