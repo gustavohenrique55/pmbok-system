@@ -37,7 +37,9 @@
    - Descrição
    - Data de início
    - Data prevista de término
-   - Prioridade (Alta/Média/Baixa)
+   - Orçamento
+   - Cliente
+   - Gerente responsável
 3. Clique em "Salvar"
 
 ### 2.2 Gerenciar Projetos
@@ -45,11 +47,18 @@
 - **Arquivar**: Projetos concluídos podem ser arquivados
 - **Excluir**: Cuidado! Esta ação não pode ser desfeita
 
-### 2.3 Exercício Prático
-Crie 3 projetos de exemplo:
-1. "Projeto Teste A" - Prioridade Alta
-2. "Projeto Teste B" - Prioridade Média
-3. "Projeto Teste C" - Prioridade Baixa
+### 2.3 Exercício Prático - Criar Projeto Principal
+Crie o projeto de exemplo com os seguintes dados:
+
+**Projeto: Edifício Comercial Centro**
+- Nome: "Edifício Comercial Centro"
+- Descrição: "Construção de edifício comercial de 12 andares no centro da cidade"
+- Data Início: 15/01/2024
+- Data Fim: 30/06/2025
+- Orçamento: R$ 15.000.000,00
+- Cliente: Incorporadora ABC Ltda
+- Gerente: Carlos Silva
+- Status: Em Andamento
 
 ---
 
@@ -77,12 +86,42 @@ O sistema usa o método Kanban:
 - Solte para atualizar o status
 
 ### 3.4 Exercício Prático
-No "Projeto Teste A", crie 5 tarefas:
-1. "Tarefa 1" - Pendente
-2. "Tarefa 2" - Em Andamento
-3. "Tarefa 3" - Concluída
-4. "Tarefa 4" - Pendente
-5. "Tarefa 5" - Em Andamento
+No projeto "Edifício Comercial Centro", crie as 5 tarefas:
+
+**Tarefa 1: Execução de Fundação Profunda**
+- Descrição: Estacas de 40m de profundidade - 120 unidades
+- Responsável: João Pereira
+- Data Início: 20/01/2024 | Data Fim: 15/03/2024
+- Prioridade: Alta | Status: Concluído
+- Custo Estimado: R$ 2.500.000,00
+
+**Tarefa 2: Execução de Estrutura de Concreto**
+- Descrição: Pilares, vigas e lajes - 12 pavimentos
+- Responsável: Maria Santos
+- Data Início: 16/03/2024 | Data Fim: 30/08/2024
+- Prioridade: Alta | Status: Em Andamento (65%)
+- Custo Estimado: R$ 4.500.000,00
+
+**Tarefa 3: Instalações Elétricas e Hidráulicas**
+- Descrição: Infraestrutura completa de instalações prediais
+- Responsável: Pedro Costa
+- Data Início: 01/06/2024 | Data Fim: 30/10/2024
+- Prioridade: Média | Status: Pendente
+- Custo Estimado: R$ 1.800.000,00
+
+**Tarefa 4: Acabamentos Internos**
+- Descrição: Revestimentos, pintura, esquadrias
+- Responsável: Ana Oliveira
+- Data Início: 01/09/2024 | Data Fim: 28/02/2025
+- Prioridade: Média | Status: Pendente
+- Custo Estimado: R$ 3.500.000,00
+
+**Tarefa 5: Execução de Fachada**
+- Descrição: Pele de vidro e ACM
+- Responsável: Roberto Lima
+- Data Início: 01/11/2024 | Data Fim: 30/04/2025
+- Prioridade: Alta | Status: Pendente
+- Custo Estimado: R$ 2.700.000,00
 
 ---
 
@@ -102,10 +141,32 @@ No "Projeto Teste A", crie 5 tarefas:
 - Cada membro vê suas tarefas atribuídas
 
 ### 4.3 Exercício Prático
-Adicione 3 membros fictícios:
-1. João Silva - Desenvolvedor
-2. Maria Santos - Designer
-3. Pedro Costa - Analista
+Adicione os 5 membros da equipe do projeto:
+
+1. **Carlos Silva**
+   - Email: carlos.silva@empresa.com
+   - Cargo: Gerente de Projeto
+   - Permissão: Owner
+
+2. **Maria Santos**
+   - Email: maria.santos@empresa.com
+   - Cargo: Engenheira Estrutural
+   - Permissão: Editor
+
+3. **João Pereira**
+   - Email: joao.pereira@empresa.com
+   - Cargo: Mestre de Obras
+   - Permissão: Editor
+
+4. **Ana Oliveira**
+   - Email: ana.oliveira@empresa.com
+   - Cargo: Arquiteta
+   - Permissão: Viewer
+
+5. **Pedro Costa**
+   - Email: pedro.costa@empresa.com
+   - Cargo: Engenheiro Elétrico
+   - Permissão: Editor
 
 ---
 
@@ -131,50 +192,91 @@ Analise o dashboard e identifique:
 
 ---
 
-## MÓDULO 6: CHATBOT DE IA (45 minutos)
+## MÓDULO 6: RISCOS DO PROJETO (30 minutos)
 
-### 6.1 Ativando a IA
+### 6.1 Cadastrar Riscos
+1. Acesse o módulo "Riscos"
+2. Clique em "Novo Risco"
+3. Preencha os dados do risco
+4. Defina Probabilidade e Impacto
+5. Adicione plano de mitigação
+
+### 6.2 Matriz de Riscos
+- Probabilidade × Impacto = Score
+- Cores: Verde (baixo), Amarelo (médio), Vermelho (alto)
+
+### 6.3 Exercício Prático
+Cadastre os 3 riscos do projeto:
+
+**Risco 1: Atraso na Entrega de Aço**
+- Categoria: Fornecimento
+- Probabilidade: Alta | Impacto: Alto
+- Status: Ativo
+- Mitigação: Contrato com fornecedor alternativo
+- Responsável: Carlos Silva
+
+**Risco 2: Chuvas Intensas no Verão**
+- Categoria: Climático
+- Probabilidade: Média | Impacto: Médio
+- Status: Monitorando
+- Mitigação: Plano de trabalho alternativo em dias chuvosos
+- Responsável: João Pereira
+
+**Risco 3: Variação Cambial em Importações**
+- Categoria: Financeiro
+- Probabilidade: Média | Impacto: Alto
+- Status: Ativo
+- Mitigação: Hedge cambial contratado
+- Responsável: Maria Santos
+
+---
+
+## MÓDULO 7: CHATBOT DE IA (45 minutos)
+
+### 7.1 Ativando a IA
 1. Clique no ícone do chatbot (geralmente no canto)
 2. A janela de chat abre
 3. Digite sua pergunta
 
-### 6.2 O que a IA pode fazer?
+### 7.2 O que a IA pode fazer?
 - Responder dúvidas sobre o sistema
-- Sugerir organização de tarefas
-- Ajudar com planejamento
-- Dar dicas de produtividade
+- Analisar dados do projeto
+- Sugerir ações baseadas nos riscos
+- Informar status e progresso
 
-### 6.3 Exemplos de Perguntas
-- "Como criar um novo projeto?"
-- "Como mudar o status de uma tarefa?"
-- "Como adicionar um membro à equipe?"
-- "Qual a melhor forma de organizar minhas tarefas?"
+### 7.3 Exemplos de Perguntas para o Projeto
+- "Qual o status atual do projeto Edifício Comercial Centro?"
+- "Quais riscos estão ativos?"
+- "Quanto do orçamento foi utilizado?"
+- "Quais tarefas estão atrasadas?"
+- "Sugira ações para o risco de atraso de material"
 
-### 6.4 Exercício Prático
-Faça 5 perguntas ao chatbot:
-1. "Olá, como você pode me ajudar?"
-2. "Como crio uma tarefa?"
-3. "O que é o método Kanban?"
-4. "Como vejo relatórios?"
-5. "Dê dicas de produtividade"
+### 7.4 Exercício Prático
+Faça 5 perguntas ao chatbot sobre o projeto:
+1. "Qual o progresso geral do projeto?"
+2. "Quem é responsável pela tarefa de Estrutura?"
+3. "Qual o orçamento restante?"
+4. "Quais são os riscos de alta prioridade?"
+5. "Resuma as tarefas pendentes"
 
 ---
 
-## MÓDULO 7: FUNCIONALIDADES AVANÇADAS (30 minutos)
+## MÓDULO 8: FUNCIONALIDADES AVANÇADAS (30 minutos)
 
-### 7.1 Filtros e Busca
+### 8.1 Filtros e Busca
 - Filtrar por projeto
 - Filtrar por status
 - Filtrar por responsável
 - Busca por palavra-chave
 
-### 7.2 Exportação de Dados
-- Exportar relatórios
-- Backup dos dados
-- Compartilhar informações
+### 8.2 Exportação de Dados
+- Exportar relatórios em PDF
+- Exportar para MS Project (XML)
+- Backup dos dados em JSON
+- Integração com ClickUp
 
-### 7.3 Personalização
-- Temas de cores
+### 8.3 Personalização
+- Temas de cores (claro/escuro)
 - Configurações de notificação
 - Preferências de exibição
 
@@ -182,21 +284,22 @@ Faça 5 perguntas ao chatbot:
 
 ## CRONOGRAMA DE TREINAMENTO SUGERIDO
 
-### Dia 1 (2 horas)
+### Dia 1 (2h30)
 - Módulo 1: Introdução (30 min)
-- Módulo 2: Projetos (45 min)
-- Prática livre (45 min)
+- Módulo 2: Projetos - Criar "Edifício Comercial Centro" (45 min)
+- Módulo 3: Tarefas - Criar as 5 tarefas (60 min)
+- Prática livre (15 min)
 
-### Dia 2 (2 horas)
-- Módulo 3: Tarefas (60 min)
-- Módulo 4: Equipe (30 min)
+### Dia 2 (2h)
+- Módulo 4: Equipe - Adicionar os 5 membros (30 min)
+- Módulo 5: Dashboard - Analisar métricas (30 min)
+- Módulo 6: Riscos - Cadastrar os 3 riscos (30 min)
 - Prática livre (30 min)
 
-### Dia 3 (2 horas)
-- Módulo 5: Dashboard (30 min)
-- Módulo 6: Chatbot IA (45 min)
-- Módulo 7: Avançado (30 min)
-- Revisão geral (15 min)
+### Dia 3 (2h)
+- Módulo 7: Chatbot IA - Fazer perguntas sobre o projeto (45 min)
+- Módulo 8: Funcionalidades Avançadas (30 min)
+- Revisão geral e dúvidas (45 min)
 
 ---
 
