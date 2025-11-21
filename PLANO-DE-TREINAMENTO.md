@@ -269,11 +269,15 @@ Faça 5 perguntas ao chatbot sobre o projeto:
 - Filtrar por responsável
 - Busca por palavra-chave
 
-### 8.2 Exportação de Dados
+### 8.2 Exportação de Dados e Integrações
 - Exportar relatórios em PDF
 - Exportar para MS Project (XML)
 - Backup dos dados em JSON
-- Integração com ClickUp
+- **Integrações disponíveis:**
+  - ClickUp (sincronização de tarefas)
+  - Trello (sincronização de cards)
+  - Microsoft Planner (sincronização via Graph API)
+  - Firebase (colaboração em tempo real)
 
 ### 8.3 Personalização
 - Temas de cores (claro/escuro)

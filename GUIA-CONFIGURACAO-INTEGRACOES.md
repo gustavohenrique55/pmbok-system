@@ -1,13 +1,15 @@
-# 🔥 GUIA COMPLETO DE CONFIGURAÇÃO - Firebase + ClickUp + MS Project
+# 🔥 GUIA COMPLETO DE CONFIGURAÇÃO - Firebase + ClickUp + Trello + Planner + MS Project
 
 ## 📋 ÍNDICE
 
 1. [Configuração do Firebase](#1-configuração-do-firebase)
 2. [Configuração do ClickUp](#2-configuração-do-clickup)
-3. [Uso do MS Project](#3-uso-do-ms-project)
-4. [Como Usar o Sistema Integrado](#4-como-usar-o-sistema-integrado)
-5. [Migração de Dados Locais](#5-migração-de-dados-locais)
-6. [Troubleshooting](#6-troubleshooting)
+3. [Configuração do Trello](#3-configuração-do-trello)
+4. [Configuração do Microsoft Planner](#4-configuração-do-microsoft-planner)
+5. [Uso do MS Project](#5-uso-do-ms-project)
+6. [Como Usar o Sistema Integrado](#6-como-usar-o-sistema-integrado)
+7. [Migração de Dados Locais](#7-migração-de-dados-locais)
+8. [Troubleshooting](#8-troubleshooting)
 
 ---
 
@@ -293,7 +295,152 @@ fetch('https://api.clickup.com/api/v2/team', {
 
 ---
 
-## 3. USO DO MS PROJECT
+## 3. CONFIGURAÇÃO DO TRELLO
+
+### **Passo 1: Criar Conta Trello**
+
+1. **Acesse:** https://trello.com/
+
+2. **Sign Up** (se não tiver conta)
+   - Grátis para sempre (Free Plan)
+   - Ou escolha plano pago se precisar
+
+3. **Crie um Board:**
+   - Nome: "Projeto Piloto"
+   - Defina as listas (colunas): A Fazer, Fazendo, Feito
+
+---
+
+### **Passo 2: Gerar API Key e Token**
+
+1. **Acesse:** https://trello.com/app-key
+
+2. **Copie a API Key** (algo como: `a1b2c3d4...`)
+
+3. **Clique em "Token"** (link na mesma página)
+
+4. **Autorize o acesso** ao seu Trello
+
+5. **Copie o Token** (string longa)
+
+6. **GUARDE AMBOS!** Você precisará deles.
+
+---
+
+### **Passo 3: Obter Board ID**
+
+**Método 1 - Via URL:**
+
+1. Abra um Board no Trello
+2. Olhe a URL:
+   ```
+   https://trello.com/b/ABC123/nome-do-board
+   ```
+3. O código após `/b/` é o **Board ID** (ex: `ABC123`)
+
+**Método 2 - Via API:**
+
+1. No navegador, acesse:
+   ```
+   https://api.trello.com/1/members/me/boards?key=SUA_API_KEY&token=SEU_TOKEN
+   ```
+2. Encontre seu board na lista JSON
+3. Copie o campo `id`
+
+---
+
+### **Passo 4: Configurar no System Pro**
+
+1. **Vá em "Configurações" > "Integrações"**
+
+2. **Trello:**
+   - API Key: Cole sua API Key
+   - Token: Cole seu Token
+   - Board ID: Cole o ID do board
+   - Clique em "Conectar Trello"
+
+3. **Teste a conexão:**
+   - Deve aparecer: "✅ Conectado"
+
+4. **Usar:**
+   - Importar Cards do Trello
+   - Exportar Tarefas para Trello
+
+---
+
+## 4. CONFIGURAÇÃO DO MICROSOFT PLANNER
+
+### **Passo 1: Acessar Microsoft Planner**
+
+1. **Acesse:** https://tasks.office.com/
+
+2. **Faça login** com sua conta Microsoft 365
+   - Precisa de conta corporativa ou educacional
+   - Conta pessoal (@outlook.com) não tem acesso ao Planner
+
+3. **Crie um Plano:**
+   - Clique em "Novo plano"
+   - Nome: "Projeto Piloto"
+   - Defina buckets (colunas)
+
+---
+
+### **Passo 2: Obter Access Token (Graph API)**
+
+**Método 1 - Graph Explorer (mais fácil):**
+
+1. **Acesse:** https://developer.microsoft.com/graph/graph-explorer
+
+2. **Faça login** com sua conta Microsoft 365
+
+3. **Autorize permissões:**
+   - Tasks.ReadWrite
+   - Group.ReadWrite.All
+
+4. **Na aba "Access token"**, copie o token
+
+⚠️ **Atenção:** Este token expira em 1 hora. Para produção, use OAuth 2.0.
+
+**Método 2 - Azure AD (produção):**
+
+1. Registre um app no Azure AD
+2. Configure permissões de API do Microsoft Graph
+3. Use fluxo OAuth 2.0 para obter tokens
+
+---
+
+### **Passo 3: Obter Plan ID**
+
+1. **No Graph Explorer**, execute:
+   ```
+   GET https://graph.microsoft.com/v1.0/me/planner/plans
+   ```
+
+2. **Na resposta**, encontre seu plano
+
+3. **Copie o campo `id`** do plano desejado
+
+---
+
+### **Passo 4: Configurar no System Pro**
+
+1. **Vá em "Configurações" > "Integrações"**
+
+2. **Microsoft Planner:**
+   - Access Token: Cole seu token do Graph
+   - Plan ID: Cole o ID do plano
+   - Clique em "Conectar Planner"
+
+3. **Teste a conexão:**
+   - Deve aparecer: "✅ Conectado"
+
+4. **Usar:**
+   - Importar Tarefas do Planner
+   - Exportar Tarefas para Planner
+
+---
+
+## 5. USO DO MS PROJECT
 
 ### **Exportar para MS Project**
 
@@ -343,7 +490,7 @@ fetch('https://api.clickup.com/api/v2/team', {
 
 ---
 
-## 4. COMO USAR O SISTEMA INTEGRADO
+## 6. COMO USAR O SISTEMA INTEGRADO
 
 ### **Cenário 1: Trabalho 100% no System Pro**
 
@@ -402,7 +549,7 @@ MS Project (relatórios executivos)
 
 ---
 
-## 5. MIGRAÇÃO DE DADOS LOCAIS
+## 7. MIGRAÇÃO DE DADOS LOCAIS
 
 ### **Se Você Já Tem Dados Locais:**
 
@@ -441,7 +588,7 @@ MS Project (relatórios executivos)
 
 ---
 
-## 6. TROUBLESHOOTING
+## 8. TROUBLESHOOTING
 
 ### **Problema: Firebase não conecta**
 
