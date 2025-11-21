@@ -600,6 +600,39 @@ const firebaseConfig = {
 
 ---
 
+### Trello (Sincronização de Cards)
+
+| ID | Caso de Teste | Procedimento | Resultado Esperado | Status |
+|----|---------------|--------------|-------------------|--------|
+| TR01 | Conectar API | Inserir API Key e Token | "Conectado ao Trello" | ⬜ |
+| TR02 | Importar cards | ID do board Trello | Cards importados como tarefas | ⬜ |
+| TR03 | Exportar tarefas | Enviar para Trello | Cards criados no board | ⬜ |
+| TR04 | Board inválido | ID errado | Erro claro | ⬜ |
+| TR05 | Token expirado | Token inválido | Mensagem de erro | ⬜ |
+
+**Como obter credenciais:**
+1. API Key: https://trello.com/app-key
+2. Token: Link na mesma página
+3. Board ID: Na URL após /b/
+
+---
+
+### Microsoft Planner (Sincronização de Tarefas)
+
+| ID | Caso de Teste | Procedimento | Resultado Esperado | Status |
+|----|---------------|--------------|-------------------|--------|
+| PL01 | Conectar Graph API | Inserir Access Token | "Conectado ao Planner" | ⬜ |
+| PL02 | Importar tarefas | ID do plano | Tarefas importadas | ⬜ |
+| PL03 | Exportar tarefas | Enviar para Planner | Tarefas criadas no plano | ⬜ |
+| PL04 | Token expirado | Token inválido/expirado | Erro claro | ⬜ |
+| PL05 | Plan ID inválido | ID errado | Mensagem de erro | ⬜ |
+
+**Como obter credenciais:**
+1. Access Token: https://developer.microsoft.com/graph/graph-explorer
+2. Plan ID: GET /me/planner/plans no Graph Explorer
+
+---
+
 ### MS Project (Import/Export XML)
 
 | ID | Caso de Teste | Procedimento | Resultado Esperado | Status |

@@ -51,6 +51,7 @@ O PMBOK 7 Manager Pro é um sistema completo de gestão de projetos baseado nas 
 - ✅ **Exportação PDF** de relatórios
 - ✅ **Kanban Board** com drag & drop
 - ✅ **Matrizes de Riscos e Stakeholders**
+- ✅ **Integrações:** Firebase, ClickUp, Trello, Microsoft Planner, MS Project
 
 ### 1.3 Requisitos do Sistema
 
