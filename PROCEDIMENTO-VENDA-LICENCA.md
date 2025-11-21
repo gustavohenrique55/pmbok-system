@@ -15,13 +15,47 @@
 - [ ] Plano de Treinamento (PLANO-DE-TREINAMENTO.md)
 - [ ] Guia de Início Rápido (GUIA-INICIO-RAPIDO.md)
 
-### 1.2 Definição de Preços (Sugestão)
-| Modalidade | Descrição | Valor Sugerido |
-|------------|-----------|----------------|
-| Licença Básica | Acesso via GitHub Pages | R$ 500 - R$ 1.500 |
-| Licença Completa | Arquivos para hospedagem própria | R$ 1.500 - R$ 3.000 |
-| Licença + Treinamento | Completa + 8h treinamento | R$ 3.000 - R$ 5.000 |
-| Licença Empresarial | Múltiplos usuários + suporte | R$ 5.000 - R$ 10.000 |
+### 1.2 Definição de Preços
+
+#### MODALIDADE 1: Licença Vitalícia (Pagamento Único)
+*Paga uma vez, usa para sempre*
+
+| Plano | Descrição | Valor |
+|-------|-----------|-------|
+| Básico | Sistema + Documentação | R$ 1.500 |
+| Completo | Básico + Arquivos para hospedagem | R$ 2.500 |
+| Empresarial | Completo + 8h treinamento | R$ 4.500 |
+
+**Inclui:** Atualizações por 1 ano + Suporte 90 dias
+
+---
+
+#### MODALIDADE 2: Licença Anual (Assinatura)
+*Pagamento recorrente com benefícios contínuos*
+
+| Plano | Descrição | Valor/Ano |
+|-------|-----------|-----------|
+| Básico | Sistema + Documentação | R$ 600/ano |
+| Completo | Básico + Arquivos para hospedagem | R$ 1.000/ano |
+| Empresarial | Completo + 4h treinamento/ano | R$ 2.000/ano |
+
+**Inclui:** Todas as atualizações + Suporte contínuo + Novas funcionalidades
+
+---
+
+#### Comparativo das Modalidades
+
+| Benefício | Vitalícia | Anual |
+|-----------|-----------|-------|
+| Pagamento | Único | Recorrente |
+| Atualizações | 1 ano | Enquanto ativo |
+| Suporte | 90 dias | Contínuo |
+| Novas funções | Não incluso | Incluso |
+| Custo 3 anos | R$ 2.500 | R$ 3.000 |
+
+**Dica de Venda:**
+- Cliente quer economia a longo prazo → Vitalícia
+- Cliente quer suporte contínuo → Anual
 
 ---
 
