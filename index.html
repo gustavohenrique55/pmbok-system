@@ -116,6 +116,17 @@ Data: Novembro 2024
             const [clickupConnected, setClickupConnected] = useState(false);
             const [clickupSyncEnabled, setClickupSyncEnabled] = useState(false);
 
+            // Estados para Trello
+            const [trelloApiKey, setTrelloApiKey] = useState('');
+            const [trelloToken, setTrelloToken] = useState('');
+            const [trelloBoardId, setTrelloBoardId] = useState('');
+            const [trelloConnected, setTrelloConnected] = useState(false);
+
+            // Estados para Microsoft Planner
+            const [plannerAccessToken, setPlannerAccessToken] = useState('');
+            const [plannerPlanId, setPlannerPlanId] = useState('');
+            const [plannerConnected, setPlannerConnected] = useState(false);
+
             // Base de Conhecimento do Manual do Usuário
             const userManualKnowledge = {
                 'dashboard': {
@@ -759,6 +770,218 @@ Data: Novembro 2024
             };
 
             // ==================== FIM CLICKUP FUNCTIONS ====================
+
+            // ==================== TRELLO FUNCTIONS ====================
+
+            // Testar conexão Trello
+            const testTrelloConnection = async () => {
+                if (!trelloApiKey || !trelloToken) {
+                    addNotification('error', 'Erro', 'Preencha API Key e Token do Trello');
+                    return;
+                }
+                try {
+                    const response = await fetch(`https://api.trello.com/1/members/me?key=${trelloApiKey}&token=${trelloToken}`);
+                    if (response.ok) {
+                        setTrelloConnected(true);
+                        addNotification('success', 'Trello', 'Conectado com sucesso!');
+                    } else {
+                        throw new Error('Credenciais inválidas');
+                    }
+                } catch (error) {
+                    setTrelloConnected(false);
+                    addNotification('error', 'Erro Trello', error.message);
+                }
+            };
+
+            // Importar cards do Trello
+            const importFromTrello = async () => {
+                if (!trelloConnected || !trelloBoardId) {
+                    addNotification('error', 'Erro', 'Configure e conecte o Trello primeiro');
+                    return;
+                }
+                try {
+                    const response = await fetch(
+                        `https://api.trello.com/1/boards/${trelloBoardId}/cards?key=${trelloApiKey}&token=${trelloToken}`
+                    );
+                    const cards = await response.json();
+
+                    const importedTasks = cards.map(card => ({
+                        id: Date.now() + Math.random(),
+                        projectId: activeProject?.id,
+                        title: card.name,
+                        description: card.desc,
+                        status: mapTrelloStatus(card.idList),
+                        priority: 'medium',
+                        createdAt: card.dateLastActivity,
+                        trelloId: card.id
+                    }));
+
+                    setTasks(prev => [...prev, ...importedTasks]);
+                    addNotification('success', 'Trello', `${importedTasks.length} cards importados`);
+                } catch (error) {
+                    addNotification('error', 'Erro Trello', error.message);
+                }
+            };
+
+            // Exportar tarefas para Trello
+            const exportToTrello = async () => {
+                if (!trelloConnected || !trelloBoardId) {
+                    addNotification('error', 'Erro', 'Configure e conecte o Trello primeiro');
+                    return;
+                }
+                try {
+                    // Obter listas do board
+                    const listsResponse = await fetch(
+                        `https://api.trello.com/1/boards/${trelloBoardId}/lists?key=${trelloApiKey}&token=${trelloToken}`
+                    );
+                    const lists = await listsResponse.json();
+                    const defaultList = lists[0]?.id;
+
+                    if (!defaultList) {
+                        throw new Error('Nenhuma lista encontrada no board');
+                    }
+
+                    const projectTasks = tasks.filter(t => t.projectId === activeProject?.id);
+                    let created = 0;
+
+                    for (const task of projectTasks) {
+                        await fetch(`https://api.trello.com/1/cards?key=${trelloApiKey}&token=${trelloToken}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                idList: defaultList,
+                                name: task.title,
+                                desc: task.description || ''
+                            })
+                        });
+                        created++;
+                    }
+                    addNotification('success', 'Trello', `${created} tarefas exportadas`);
+                } catch (error) {
+                    addNotification('error', 'Erro Trello', error.message);
+                }
+            };
+
+            // Mapear status Trello (simplificado)
+            const mapTrelloStatus = (listId) => {
+                // Por padrão, retorna 'todo'. O usuário pode personalizar
+                return 'todo';
+            };
+
+            // ==================== FIM TRELLO FUNCTIONS ====================
+
+            // ==================== PLANNER FUNCTIONS ====================
+
+            // Testar conexão Microsoft Planner
+            const testPlannerConnection = async () => {
+                if (!plannerAccessToken) {
+                    addNotification('error', 'Erro', 'Preencha o Access Token do Microsoft Graph');
+                    return;
+                }
+                try {
+                    const response = await fetch('https://graph.microsoft.com/v1.0/me', {
+                        headers: { 'Authorization': `Bearer ${plannerAccessToken}` }
+                    });
+                    if (response.ok) {
+                        setPlannerConnected(true);
+                        addNotification('success', 'Planner', 'Conectado com sucesso!');
+                    } else {
+                        throw new Error('Token inválido ou expirado');
+                    }
+                } catch (error) {
+                    setPlannerConnected(false);
+                    addNotification('error', 'Erro Planner', error.message);
+                }
+            };
+
+            // Importar tarefas do Planner
+            const importFromPlanner = async () => {
+                if (!plannerConnected || !plannerPlanId) {
+                    addNotification('error', 'Erro', 'Configure e conecte o Planner primeiro');
+                    return;
+                }
+                try {
+                    const response = await fetch(
+                        `https://graph.microsoft.com/v1.0/planner/plans/${plannerPlanId}/tasks`,
+                        { headers: { 'Authorization': `Bearer ${plannerAccessToken}` } }
+                    );
+                    const data = await response.json();
+
+                    const importedTasks = data.value.map(task => ({
+                        id: Date.now() + Math.random(),
+                        projectId: activeProject?.id,
+                        title: task.title,
+                        description: '',
+                        status: mapPlannerStatus(task.percentComplete),
+                        priority: mapPlannerPriority(task.priority),
+                        dueDate: task.dueDateTime,
+                        plannerId: task.id
+                    }));
+
+                    setTasks(prev => [...prev, ...importedTasks]);
+                    addNotification('success', 'Planner', `${importedTasks.length} tarefas importadas`);
+                } catch (error) {
+                    addNotification('error', 'Erro Planner', error.message);
+                }
+            };
+
+            // Exportar tarefas para Planner
+            const exportToPlanner = async () => {
+                if (!plannerConnected || !plannerPlanId) {
+                    addNotification('error', 'Erro', 'Configure e conecte o Planner primeiro');
+                    return;
+                }
+                try {
+                    // Obter buckets do plano
+                    const bucketsResponse = await fetch(
+                        `https://graph.microsoft.com/v1.0/planner/plans/${plannerPlanId}/buckets`,
+                        { headers: { 'Authorization': `Bearer ${plannerAccessToken}` } }
+                    );
+                    const buckets = await bucketsResponse.json();
+                    const defaultBucket = buckets.value[0]?.id;
+
+                    if (!defaultBucket) {
+                        throw new Error('Nenhum bucket encontrado no plano');
+                    }
+
+                    const projectTasks = tasks.filter(t => t.projectId === activeProject?.id);
+                    let created = 0;
+
+                    for (const task of projectTasks) {
+                        await fetch('https://graph.microsoft.com/v1.0/planner/tasks', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${plannerAccessToken}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                planId: plannerPlanId,
+                                bucketId: defaultBucket,
+                                title: task.title
+                            })
+                        });
+                        created++;
+                    }
+                    addNotification('success', 'Planner', `${created} tarefas exportadas`);
+                } catch (error) {
+                    addNotification('error', 'Erro Planner', error.message);
+                }
+            };
+
+            // Mapear status Planner → System Pro
+            const mapPlannerStatus = (percentComplete) => {
+                if (percentComplete === 100) return 'done';
+                if (percentComplete > 0) return 'in-progress';
+                return 'todo';
+            };
+
+            // Mapear prioridade Planner → System Pro
+            const mapPlannerPriority = (priority) => {
+                const priorityMap = { 1: 'urgent', 3: 'high', 5: 'medium', 9: 'low' };
+                return priorityMap[priority] || 'medium';
+            };
+
+            // ==================== FIM PLANNER FUNCTIONS ====================
 
             // ==================== MS PROJECT FUNCTIONS ====================
 
@@ -4303,6 +4526,137 @@ Seja profissional, conciso e use linguagem executiva.`;
                                                             className="block text-center text-sm text-blue-600 hover:underline"
                                                         >
                                                             🔑 Obter API Key no ClickUp
+                                                        </a>
+                                                    </div>
+                                                </div>
+
+                                                {/* Trello */}
+                                                <div className="mb-6 p-4 bg-gray-50 rounded">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <h4 className="font-semibold">📋 Trello</h4>
+                                                        <span className={`px-2 py-1 rounded text-xs ${
+                                                            trelloConnected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                                                        }`}>
+                                                            {trelloConnected ? '✅ Conectado' : '⚪ Desconectado'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-600 mb-3">
+                                                        Sincronize cards com o Trello
+                                                    </p>
+                                                    <div className="space-y-2">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="API Key do Trello"
+                                                            value={trelloApiKey}
+                                                            onChange={(e) => setTrelloApiKey(e.target.value)}
+                                                            className="w-full border rounded px-3 py-2 text-sm"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Token do Trello"
+                                                            value={trelloToken}
+                                                            onChange={(e) => setTrelloToken(e.target.value)}
+                                                            className="w-full border rounded px-3 py-2 text-sm"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Board ID"
+                                                            value={trelloBoardId}
+                                                            onChange={(e) => setTrelloBoardId(e.target.value)}
+                                                            className="w-full border rounded px-3 py-2 text-sm"
+                                                        />
+                                                        <button
+                                                            onClick={testTrelloConnection}
+                                                            className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                        >
+                                                            📋 Conectar Trello
+                                                        </button>
+
+                                                        {trelloConnected && trelloBoardId && (
+                                                            <div className="pt-2 border-t space-y-2">
+                                                                <button
+                                                                    onClick={importFromTrello}
+                                                                    className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                                >
+                                                                    📥 Importar Cards do Trello
+                                                                </button>
+                                                                <button
+                                                                    onClick={exportToTrello}
+                                                                    className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                                                                >
+                                                                    📤 Exportar Tarefas para Trello
+                                                                </button>
+                                                            </div>
+                                                        )}
+
+                                                        <a
+                                                            href="https://trello.com/app-key"
+                                                            target="_blank"
+                                                            className="block text-center text-sm text-blue-600 hover:underline"
+                                                        >
+                                                            🔑 Obter API Key no Trello
+                                                        </a>
+                                                    </div>
+                                                </div>
+
+                                                {/* Microsoft Planner */}
+                                                <div className="mb-6 p-4 bg-gray-50 rounded">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <h4 className="font-semibold">📅 Microsoft Planner</h4>
+                                                        <span className={`px-2 py-1 rounded text-xs ${
+                                                            plannerConnected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                                                        }`}>
+                                                            {plannerConnected ? '✅ Conectado' : '⚪ Desconectado'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-600 mb-3">
+                                                        Sincronize tarefas com o Microsoft Planner
+                                                    </p>
+                                                    <div className="space-y-2">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Access Token (Microsoft Graph)"
+                                                            value={plannerAccessToken}
+                                                            onChange={(e) => setPlannerAccessToken(e.target.value)}
+                                                            className="w-full border rounded px-3 py-2 text-sm"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Plan ID"
+                                                            value={plannerPlanId}
+                                                            onChange={(e) => setPlannerPlanId(e.target.value)}
+                                                            className="w-full border rounded px-3 py-2 text-sm"
+                                                        />
+                                                        <button
+                                                            onClick={testPlannerConnection}
+                                                            className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                        >
+                                                            📅 Conectar Planner
+                                                        </button>
+
+                                                        {plannerConnected && plannerPlanId && (
+                                                            <div className="pt-2 border-t space-y-2">
+                                                                <button
+                                                                    onClick={importFromPlanner}
+                                                                    className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                                >
+                                                                    📥 Importar Tarefas do Planner
+                                                                </button>
+                                                                <button
+                                                                    onClick={exportToPlanner}
+                                                                    className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                                                                >
+                                                                    📤 Exportar Tarefas para Planner
+                                                                </button>
+                                                            </div>
+                                                        )}
+
+                                                        <a
+                                                            href="https://developer.microsoft.com/graph/graph-explorer"
+                                                            target="_blank"
+                                                            className="block text-center text-sm text-blue-600 hover:underline"
+                                                        >
+                                                            🔑 Obter Token no Graph Explorer
                                                         </a>
                                                     </div>
                                                 </div>
